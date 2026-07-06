@@ -497,12 +497,17 @@ function buildQuestHtml(p) {
 function buildItemsScreen(p, slotIdx) {
   const orig = slotOriginal[slotIdx];
 
-  let h = `<button class="edit-toggle-btn" onclick="event.stopPropagation();openItemsEdit(${slotIdx})" title="Edit items">✎</button>`;
+  let h = '<div class="screen-actions">';
+  if (screenHasChanges(slotIdx, 'items')) h += `<button class="screen-reset-btn" onclick="event.stopPropagation();resetScreen(${slotIdx},'items')" title="Reset items">↺</button>`;
+  h += `<button class="edit-toggle-btn" onclick="event.stopPropagation();openItemsEdit(${slotIdx})" title="Edit items">✎</button>`;
+  h += '</div>';
   h += '<div class="items-grid">';
   for (let j = 0; j < 24; j++) {
     const itemId = p.items[j];
     const origId = orig ? orig.items[j] : itemId;
     const isAdded = itemId !== 255 && origId === 255;
+    const isChanged = itemId !== 255 && origId !== 255 && itemId !== origId;
+    const ammoChanged = AMMO_SLOTS.has(j) && itemId !== 255 && orig && p.ammo[j] !== orig.ammo[j];
     const wasRemoved = origId !== 255 && itemId === 255;
 
     if (wasRemoved) {
@@ -518,7 +523,7 @@ function buildItemsScreen(p, slotIdx) {
       const name = ITEM_NAMES[itemId] || `Item(${itemId})`;
       const img = ITEM_IMAGES[itemId];
       const ammo = AMMO_SLOTS.has(j) && p.ammo[j] > 0 ? `<span class="item-ammo">${p.ammo[j]}</span>` : '';
-      h += `<div class="item-cell has-item${isAdded?' item-added':''}" data-name="${name}" title="${name}">`;
+      h += `<div class="item-cell has-item${isAdded || isChanged || ammoChanged?' item-added':''}" data-name="${name}" title="${name}">`;
       if (img) h += `<img class="item-icon" src="images/items/${img}.png" alt="${name}">`;
       else h += `<div class="item-icon-empty"></div>`;
       h += `${ammo}</div>`;
@@ -548,7 +553,10 @@ function buildEquipScreen(p, slotIdx) {
     upgs.push({title:`Magic: ${p.magic} / ${p.magicLevel === 2 ? 96 : 48}`, img:'upg_scale1.png', isMagic:true, added:false});
   }
 
-  let h = `<button class="edit-toggle-btn" onclick="event.stopPropagation();openEquipEdit(${slotIdx})" title="Edit equipment">✎</button>`;
+  let h = '<div class="screen-actions">';
+  if (screenHasChanges(slotIdx, 'equip')) h += `<button class="screen-reset-btn" onclick="event.stopPropagation();resetScreen(${slotIdx},'equip')" title="Reset equipment">↺</button>`;
+  h += `<button class="edit-toggle-btn" onclick="event.stopPropagation();openEquipEdit(${slotIdx})" title="Edit equipment">✎</button>`;
+  h += '</div>';
   h += '<div class="equip-layout">';
 
   // Left: upgrades column
@@ -612,13 +620,15 @@ function buildEquipEditPanel(p, slotIdx) {
       const owned = (p.equipment >> cat.bits[j]) & 1;
       const wasOriginal = orig ? (orig.equipment >> cat.bits[j]) & 1 : owned;
       const isAdded = owned && !wasOriginal;
+      const isRemoved = !owned && wasOriginal;
       const img = EQUIP_IMAGES[row][j];
-      h += `<label class="edit-item${isAdded ? ' edit-added' : ''}" onclick="event.stopPropagation()">`;
+      h += `<label class="edit-item${isAdded ? ' edit-added' : ''}${isRemoved ? ' edit-removed' : ''}" onclick="event.stopPropagation()">`;
       h += `<input type="checkbox" ${owned ? 'checked' : ''} onchange="toggleEquipItem(${slotIdx},${cat.bits[j]})">`;
       h += `<img class="edit-item-icon" src="images/equipment/${img}.png">`;
       h += `<span class="edit-item-name">${cat.items[j]}</span>`;
       if (wasOriginal && owned) h += '<span class="edit-badge edit-badge-orig">save</span>';
       if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+      if (isRemoved) h += `<span class="edit-badge edit-badge-undo" onclick="event.preventDefault();event.stopPropagation();toggleEquipItem(${slotIdx},${cat.bits[j]})" title="Undo">undo</span>`;
       h += '</label>';
     }
     h += '</div>';
@@ -633,9 +643,10 @@ function buildEquipEditPanel(p, slotIdx) {
     for (let v = 0; v < maxV; v++) {
       const label = v < up.vals.length ? up.vals[v] : `${up.name} (Level ${v})`;
       const isChanged = v === val && v !== origVal;
-      h += `<label class="edit-radio${isChanged ? ' edit-added' : ''}" onclick="event.stopPropagation()">`;
+      h += `<label class="edit-radio${isChanged ? ' edit-modified' : ''}" onclick="event.stopPropagation()">`;
       h += `<input type="radio" name="upg_${slotIdx}_${up.shift}" value="${v}" ${v === val ? 'checked' : ''} onchange="setUpgrade(${slotIdx},${up.shift},${v})">`;
       h += `<span>${label}</span>`;
+      if (isChanged) h += `<span class="edit-badge edit-badge-edit" onclick="event.preventDefault();event.stopPropagation();setUpgrade(${slotIdx},${up.shift},${origVal})" title="Revert to original">edit</span>`;
       h += '</label>';
     }
     h += '</div>';
@@ -648,7 +659,10 @@ function buildEquipEditPanel(p, slotIdx) {
 function buildQuestScreen(p, slotIdx) {
   const orig = slotOriginal[slotIdx];
 
-  let h = `<button class="edit-toggle-btn" onclick="event.stopPropagation();openQuestEdit(${slotIdx})" title="Edit quest">✎</button>`;
+  let h = '<div class="screen-actions">';
+  if (screenHasChanges(slotIdx, 'quest')) h += `<button class="screen-reset-btn" onclick="event.stopPropagation();resetScreen(${slotIdx},'quest')" title="Reset quest">↺</button>`;
+  h += `<button class="edit-toggle-btn" onclick="event.stopPropagation();openQuestEdit(${slotIdx})" title="Edit quest">✎</button>`;
+  h += '</div>';
   h += '<div class="quest-layout">';
 
   // === Top-left: quest items (2x2: agony, gerudo, skulltula+count) ===
@@ -727,20 +741,43 @@ function buildQuestEditPanel(p, slotIdx) {
   h += '<div class="edit-panel-body">';
 
   // Quest items
+  const origAgony = orig ? (orig.questItems >> 21) & 1 : hasAgony;
+  const origGerudo = orig ? (orig.questItems >> 22) & 1 : hasGerudo;
+  const agonyAdded = hasAgony && !origAgony;
+  const gerudoAdded = hasGerudo && !origGerudo;
+  const agonyRemoved = !hasAgony && origAgony;
+  const gerudoRemoved = !hasGerudo && origGerudo;
   h += '<div class="edit-category"><div class="edit-cat-title">Quest Items</div>';
-  h += `<label class="edit-item" onclick="event.stopPropagation()"><input type="checkbox" ${hasAgony?'checked':''} onchange="setQuestBit(${slotIdx},21,this.checked?1:0)"><img class="edit-item-icon" src="images/quest/quest_stone_agony.webp"><span class="edit-item-name">Stone of Agony</span></label>`;
-  h += `<label class="edit-item" onclick="event.stopPropagation()"><input type="checkbox" ${hasGerudo?'checked':''} onchange="setQuestBit(${slotIdx},22,this.checked?1:0)"><img class="edit-item-icon" src="images/quest/quest_gerudo_card.webp"><span class="edit-item-name">Gerudo Card</span></label>`;
+  h += `<label class="edit-item${agonyAdded?' edit-added':''}${agonyRemoved?' edit-removed':''}" onclick="event.stopPropagation()"><input type="checkbox" ${hasAgony?'checked':''} onchange="setQuestBit(${slotIdx},21,this.checked?1:0)"><img class="edit-item-icon" src="images/quest/quest_stone_agony.webp"><span class="edit-item-name">Stone of Agony</span>`;
+  if (origAgony && hasAgony) h += '<span class="edit-badge edit-badge-orig">save</span>';
+  if (agonyAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+  if (agonyRemoved) h += `<span class="edit-badge edit-badge-undo" onclick="event.preventDefault();event.stopPropagation();setQuestBit(${slotIdx},21,1)" title="Undo">undo</span>`;
+  h += '</label>';
+  h += `<label class="edit-item${gerudoAdded?' edit-added':''}${gerudoRemoved?' edit-removed':''}" onclick="event.stopPropagation()"><input type="checkbox" ${hasGerudo?'checked':''} onchange="setQuestBit(${slotIdx},22,this.checked?1:0)"><img class="edit-item-icon" src="images/quest/quest_gerudo_card.webp"><span class="edit-item-name">Gerudo Card</span>`;
+  if (origGerudo && hasGerudo) h += '<span class="edit-badge edit-badge-orig">save</span>';
+  if (gerudoAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+  if (gerudoRemoved) h += `<span class="edit-badge edit-badge-undo" onclick="event.preventDefault();event.stopPropagation();setQuestBit(${slotIdx},22,1)" title="Undo">undo</span>`;
+  h += '</label>';
   h += '</div>';
 
   // Gold Skulltulas
+  const origGs = orig ? orig.gsTokens : p.gsTokens;
+  const gsChanged = p.gsTokens !== origGs;
   h += '<div class="edit-category"><div class="edit-cat-title">Gold Skulltulas</div>';
-  h += `<label class="edit-item" onclick="event.stopPropagation()"><img class="edit-item-icon" src="images/quest/gold_skulltula.png"><input type="number" class="edit-ammo" min="0" max="100" value="${p.gsTokens}" onchange="setGsTokens(${slotIdx},parseInt(this.value)||0)"></label>`;
+  h += `<label class="edit-item${gsChanged?' edit-added':''}" onclick="event.stopPropagation()"><img class="edit-item-icon" src="images/quest/gold_skulltula.png"><span class="edit-item-name">Gold Skulltulas</span><input type="number" class="edit-ammo" min="0" max="100" value="${p.gsTokens}" onchange="setGsTokens(${slotIdx},parseInt(this.value)||0)">`;
+  if (gsChanged) h += `<span class="edit-badge edit-badge-edit" onclick="event.preventDefault();event.stopPropagation();setGsTokens(${slotIdx},${origGs})" title="Revert to original">edit</span>`;
+  h += '</label>';
   h += '</div>';
 
   // Heart pieces
+  const origHp = orig ? (orig.questItems >>> 28) & 0xF : heartPieces;
+  const hpChanged = heartPieces !== origHp;
   h += '<div class="edit-category"><div class="edit-cat-title">Heart Pieces</div>';
   for (let v = 0; v < 4; v++) {
-    h += `<label class="edit-radio" onclick="event.stopPropagation()"><input type="radio" name="hp_${slotIdx}" value="${v}" ${v===heartPieces?'checked':''} onchange="setHeartPieces(${slotIdx},${v})"><span>${v === 0 ? 'None' : v + '/4'}</span></label>`;
+    const isThis = v === heartPieces && hpChanged;
+    h += `<label class="edit-radio${isThis?' edit-modified':''}" onclick="event.stopPropagation()"><input type="radio" name="hp_${slotIdx}" value="${v}" ${v===heartPieces?'checked':''} onchange="setHeartPieces(${slotIdx},${v})"><span>${v === 0 ? 'None' : v + '/4'}</span>`;
+    if (isThis) h += `<span class="edit-badge edit-badge-edit" onclick="event.preventDefault();event.stopPropagation();setHeartPieces(${slotIdx},${origHp})" title="Revert to original">edit</span>`;
+    h += '</label>';
   }
   h += '</div>';
 
@@ -752,12 +789,14 @@ function buildQuestEditPanel(p, slotIdx) {
     const has = (p.questItems >> medalBits[m]) & 1;
     const origHas = orig ? (orig.questItems >> medalBits[m]) & 1 : has;
     const isAdded = has && !origHas;
-    h += `<label class="edit-item${isAdded?' edit-added':''}" onclick="event.stopPropagation()">`;
+    const isRemoved = !has && origHas;
+    h += `<label class="edit-item${isAdded?' edit-added':''}${isRemoved?' edit-removed':''}" onclick="event.stopPropagation()">`;
     h += `<input type="checkbox" ${has?'checked':''} onchange="setQuestBit(${slotIdx},${medalBits[m]},this.checked?1:0)">`;
     h += `<img class="edit-item-icon" src="images/quest/icon_${medalNames[m].toLowerCase()}.png">`;
     h += `<span class="edit-item-name">${medalNames[m]} Medallion</span>`;
     if (origHas && has) h += '<span class="edit-badge edit-badge-orig">save</span>';
     if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+    if (isRemoved) h += `<span class="edit-badge edit-badge-undo" onclick="event.preventDefault();event.stopPropagation();setQuestBit(${slotIdx},${medalBits[m]},1)" title="Undo">undo</span>`;
     h += '</label>';
   }
   h += '</div>';
@@ -768,12 +807,14 @@ function buildQuestEditPanel(p, slotIdx) {
     const has = (p.questItems >> song.bit) & 1;
     const origHas = orig ? (orig.questItems >> song.bit) & 1 : has;
     const isAdded = has && !origHas;
-    h += `<label class="edit-item${isAdded?' edit-added':''}" onclick="event.stopPropagation()">`;
+    const isRemoved = !has && origHas;
+    h += `<label class="edit-item${isAdded?' edit-added':''}${isRemoved?' edit-removed':''}" onclick="event.stopPropagation()">`;
     h += `<input type="checkbox" ${has?'checked':''} onchange="setQuestBit(${slotIdx},${song.bit},this.checked?1:0)">`;
     h += `<img class="edit-item-icon" src="images/quest/${song.img}" style="image-rendering:pixelated">`;
     h += `<span class="edit-item-name">${song.name}</span>`;
     if (origHas && has) h += '<span class="edit-badge edit-badge-orig">save</span>';
     if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+    if (isRemoved) h += `<span class="edit-badge edit-badge-undo" onclick="event.preventDefault();event.stopPropagation();setQuestBit(${slotIdx},${song.bit},1)" title="Undo">undo</span>`;
     h += '</label>';
   }
   h += '</div>';
@@ -789,12 +830,14 @@ function buildQuestEditPanel(p, slotIdx) {
     const has = p[st.key];
     const origHas = orig ? orig[st.key] : has;
     const isAdded = has && !origHas;
-    h += `<label class="edit-item${isAdded?' edit-added':''}" onclick="event.stopPropagation()">`;
+    const isRemoved = !has && origHas;
+    h += `<label class="edit-item${isAdded?' edit-added':''}${isRemoved?' edit-removed':''}" onclick="event.stopPropagation()">`;
     h += `<input type="checkbox" ${has?'checked':''} onchange="setStone(${slotIdx},'${st.key}',this.checked?1:0)">`;
     h += `<img class="edit-item-icon" src="images/quest/${st.img}">`;
     h += `<span class="edit-item-name">${st.name}</span>`;
     if (origHas && has) h += '<span class="edit-badge edit-badge-orig">save</span>';
     if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+    if (isRemoved) h += `<span class="edit-badge edit-badge-undo" onclick="event.preventDefault();event.stopPropagation();setStone(${slotIdx},'${st.key}',1)" title="Undo">undo</span>`;
     h += '</label>';
   }
   h += '</div>';
@@ -1067,6 +1110,48 @@ function downloadSohSave(filename) {
   downloadJson(copy, filename);
 }
 
+function screenHasChanges(slotIdx, screenKey) {
+  const p = slotParsed[slotIdx];
+  const o = slotOriginal[slotIdx];
+  if (!p || !o) return false;
+  if (screenKey === 'items') {
+    for (let i = 0; i < 24; i++) {
+      if (p.items[i] !== o.items[i]) return true;
+      if (p.ammo[i] !== o.ammo[i]) return true;
+    }
+    return false;
+  }
+  if (screenKey === 'equip') {
+    return p.equipment !== o.equipment || p.upgrades !== o.upgrades;
+  }
+  if (screenKey === 'quest') {
+    return p.questItems !== o.questItems || p.gsTokens !== o.gsTokens ||
+      p.kokiriEmerald !== o.kokiriEmerald || p.goronsRuby !== o.goronsRuby || p.zorasSapphire !== o.zorasSapphire;
+  }
+  return false;
+}
+
+function resetScreen(slotIdx, screenKey) {
+  const p = slotParsed[slotIdx];
+  const o = slotOriginal[slotIdx];
+  if (!p || !o) return;
+  if (screenKey === 'items') {
+    p.items = o.items.slice();
+    p.ammo = o.ammo.slice();
+  } else if (screenKey === 'equip') {
+    p.equipment = o.equipment;
+    p.upgrades = o.upgrades;
+  } else if (screenKey === 'quest') {
+    p.questItems = o.questItems;
+    p.gsTokens = o.gsTokens;
+    p.kokiriEmerald = o.kokiriEmerald;
+    p.goronsRuby = o.goronsRuby;
+    p.zorasSapphire = o.zorasSapphire;
+  }
+  rerenderScreen(slotIdx, screenKey);
+  updateSummary(slotIdx);
+}
+
 // ===== TOGGLE EDITING =====
 
 function rerenderScreen(slotIdx, screenKey) {
@@ -1079,10 +1164,24 @@ function rerenderScreen(slotIdx, screenKey) {
   const p = slotParsed[slotIdx];
   if (!p) return;
 
+  const editPanel = content.querySelector('.edit-panel');
+  const editBody = content.querySelector('.edit-panel-body');
+  const wasOpen = editPanel && editPanel.style.display === 'flex';
+  const scrollTop = editBody ? editBody.scrollTop : 0;
+
   if (screenKey === 'items') content.innerHTML = buildItemsScreen(p, slotIdx);
   else if (screenKey === 'equip') content.innerHTML = buildEquipScreen(p, slotIdx);
   else if (screenKey === 'quest') content.innerHTML = buildQuestScreen(p, slotIdx);
   initNamebarHovers();
+
+  if (wasOpen) {
+    const newPanel = content.querySelector('.edit-panel');
+    if (newPanel) {
+      newPanel.style.display = 'flex';
+      const newBody = newPanel.querySelector('.edit-panel-body');
+      if (newBody) newBody.scrollTop = scrollTop;
+    }
+  }
 }
 
 function updateSummary(slotIdx) {
@@ -1126,7 +1225,6 @@ function setQuestBit(slotIdx, bit, value) {
   if (value) p.questItems |= (1 << bit);
   else p.questItems &= ~(1 << bit);
   rerenderScreen(slotIdx, 'quest');
-  openQuestEdit(slotIdx);
   updateSummary(slotIdx);
 }
 
@@ -1135,7 +1233,6 @@ function setGsTokens(slotIdx, value) {
   if (!p) return;
   p.gsTokens = Math.max(0, Math.min(100, value));
   rerenderScreen(slotIdx, 'quest');
-  openQuestEdit(slotIdx);
 }
 
 function setHeartPieces(slotIdx, value) {
@@ -1143,7 +1240,6 @@ function setHeartPieces(slotIdx, value) {
   if (!p) return;
   p.questItems = ((p.questItems & 0x0FFFFFFF) | ((value & 0xF) << 28)) >>> 0;
   rerenderScreen(slotIdx, 'quest');
-  openQuestEdit(slotIdx);
 }
 
 function openEquipEdit(slotIdx) {
@@ -1161,7 +1257,6 @@ function toggleEquipItem(slotIdx, bit) {
   if (!p) return;
   p.equipment ^= (1 << bit);
   rerenderScreen(slotIdx, 'equip');
-  openEquipEdit(slotIdx);
 }
 
 function setUpgrade(slotIdx, shift, val) {
@@ -1171,7 +1266,6 @@ function setUpgrade(slotIdx, shift, val) {
   const mask = def ? def.mask : 7;
   p.upgrades = (p.upgrades & ~(mask << shift)) | (val << shift);
   rerenderScreen(slotIdx, 'equip');
-  openEquipEdit(slotIdx);
 }
 
 // ===== ITEMS EDIT PANEL =====
@@ -1189,8 +1283,11 @@ function buildItemsEditPanel(p, slotIdx) {
     const options = SLOT_ITEMS[j];
     const hasItem = itemId !== 255;
     const isAdded = hasItem && origId === 255;
+    const isChanged = hasItem && origId !== 255 && itemId !== origId;
+    const isRemoved = !hasItem && origId !== 255;
+    const ammoChanged = AMMO_SLOTS.has(j) && hasItem && orig && p.ammo[j] !== orig.ammo[j];
 
-    h += `<div class="edit-item${isAdded ? ' edit-added' : ''}" onclick="event.stopPropagation()">`;
+    h += `<div class="edit-item${isAdded || isChanged || ammoChanged ? ' edit-added' : ''}${isRemoved ? ' edit-removed' : ''}" onclick="event.stopPropagation()">`;
 
     if (options.length === 1) {
       const name = ITEM_NAMES[options[0]];
@@ -1213,8 +1310,10 @@ function buildItemsEditPanel(p, slotIdx) {
       }
     }
 
-    if (origId !== 255 && hasItem && origId === itemId) h += '<span class="edit-badge edit-badge-orig">save</span>';
-    if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+    if (origId !== 255 && hasItem && origId === itemId && !ammoChanged) h += '<span class="edit-badge edit-badge-orig">save</span>';
+    if (isAdded) h += `<span class="edit-badge edit-badge-new" onclick="event.stopPropagation();setItem(${slotIdx},${j},255)" title="Remove" style="cursor:pointer">new</span>`;
+    if (isChanged || ammoChanged) h += `<span class="edit-badge edit-badge-edit" onclick="event.stopPropagation();revertItem(${slotIdx},${j})" title="Revert to original">edit</span>`;
+    if (isRemoved) h += `<span class="edit-badge edit-badge-undo" onclick="event.stopPropagation();revertItem(${slotIdx},${j})" title="Undo">undo</span>`;
 
     h += '</div>';
   }
@@ -1242,13 +1341,22 @@ function setItem(slotIdx, slot, itemId) {
     p.ammo[slot] = SLOT_DEFAULT_AMMO[slot] || 0;
   }
   rerenderScreen(slotIdx, 'items');
-  openItemsEdit(slotIdx);
+}
+
+function revertItem(slotIdx, slot) {
+  const p = slotParsed[slotIdx];
+  const o = slotOriginal[slotIdx];
+  if (!p || !o) return;
+  p.items[slot] = o.items[slot];
+  if (AMMO_SLOTS.has(slot)) p.ammo[slot] = o.ammo[slot];
+  rerenderScreen(slotIdx, 'items');
 }
 
 function setAmmo(slotIdx, slot, amount) {
   const p = slotParsed[slotIdx];
   if (!p) return;
   p.ammo[slot] = Math.max(0, Math.min(99, amount));
+  rerenderScreen(slotIdx, 'items');
 }
 
 function setStone(slotIdx, key, value) {
@@ -1256,7 +1364,6 @@ function setStone(slotIdx, key, value) {
   if (!p) return;
   p[key] = value ? 1 : 0;
   rerenderScreen(slotIdx, 'quest');
-  openQuestEdit(slotIdx);
   updateSummary(slotIdx);
 }
 

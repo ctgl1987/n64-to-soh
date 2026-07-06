@@ -239,10 +239,15 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 .upgrade-actions{display:flex;gap:.75rem}
 
 /* Edit toggle button */
-.edit-toggle-btn{position:absolute;top:8px;right:8px;z-index:10;background:rgba(0,0,0,.5);border:1px solid var(--gold-dim);
+.screen-actions{position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:4px}
+.edit-toggle-btn{background:rgba(0,0,0,.5);border:1px solid var(--gold-dim);
   color:var(--gold);font-size:1.1rem;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;
   line-height:1;padding:0;border-radius:3px}
 .edit-toggle-btn:hover{background:rgba(200,168,78,.2);border-color:var(--gold)}
+.screen-reset-btn{background:rgba(200,60,60,.25);border:1px solid rgba(200,80,80,.5);
+  color:#e06060;font-size:1.1rem;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  line-height:1;padding:0;border-radius:3px}
+.screen-reset-btn:hover{background:rgba(200,60,60,.45);border-color:rgba(220,80,80,.7)}
 
 /* Edit panel overlay */
 .edit-panel{position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;
@@ -261,12 +266,19 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 .edit-item-icon{width:24px;height:24px;image-rendering:pixelated;object-fit:contain}
 .edit-item-name{flex:1}
 .edit-radio{display:flex;align-items:center;gap:.4rem;padding:.15rem .3rem;cursor:pointer;font-size:.75rem;color:var(--text)}
+.edit-radio span:first-of-type{flex:1}
 .edit-radio:hover{background:rgba(255,255,255,.05)}
 .edit-radio input[type="radio"]{accent-color:var(--gold);margin:0}
 .edit-badge{font-size:.6rem;padding:1px 5px;border-radius:2px;text-transform:uppercase;letter-spacing:.03em}
 .edit-badge-orig{background:rgba(78,138,193,.2);color:var(--blue)}
 .edit-badge-new{background:rgba(76,175,80,.2);color:var(--green)}
+.edit-badge-edit{background:rgba(200,160,60,.2);color:#d4a840;cursor:pointer}
+.edit-badge-edit:hover{background:rgba(200,160,60,.4)}
+.edit-badge-undo{background:rgba(200,60,60,.2);color:#e06060;cursor:pointer}
+.edit-badge-undo:hover{background:rgba(200,60,60,.4)}
+.edit-removed{background:rgba(200,60,60,.12)}
 .edit-added{background:rgba(76,175,80,.06)}
+.edit-modified{background:rgba(200,160,60,.12)}
 
 /* Added item/equipment indicator in pause screen */
 .eq-added,.item-added{position:relative}
