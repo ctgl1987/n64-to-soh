@@ -313,12 +313,10 @@ function renderSohSlot(data, filename, result) {
     html += `<img class="pause-bg" src="images/${tab.bg}" alt="">`;
     html += `<div class="pause-content ${tab.key}-content">${screens[tab.key]}</div>`;
     html += `</div>`;
-    if (tab.key !== 'save') {
-      html += `<div class="pause-namebar"><span data-namebar="0-${tab.key}"></span></div>`;
-    }
     html += `</div>`;
   }
 
+  html += `<div class="pause-namebar"><span data-namebar="0"></span></div>`;
   html += '</div>'; // pause-wrap
   html += '</div>'; // slot-panel
 
@@ -952,12 +950,10 @@ function renderSlots(be) {
       html += `<img class="pause-bg" src="images/${tab.bg}" alt="">`;
       html += `<div class="pause-content ${tab.key}-content">${screens[tab.key]}</div>`;
       html += `</div>`;
-      if (tab.key !== 'save') {
-        html += `<div class="pause-namebar"><span data-namebar="${i}-${tab.key}"></span></div>`;
-      }
       html += `</div>`;
     }
 
+    html += `<div class="pause-namebar"><span data-namebar="${i}"></span></div>`;
     html += '</div>'; // pause-wrap
     html += '</div>'; // slot-panel
   }
@@ -970,14 +966,14 @@ function initNamebarHovers() {
   document.querySelectorAll('.eq-cell[data-name], .item-cell[data-name], .qi-cell[data-name], .qhp[data-name], .qm[data-name], .qs[data-name], .qst[data-name]').forEach(cell => {
     const isEmpty = cell.classList.contains('empty') || cell.classList.contains('eq-empty') || cell.classList.contains('qi-off');
     cell.addEventListener('mouseenter', () => {
-      const span = cell.closest('.pause-screen').querySelector('.pause-namebar span');
+      const span = cell.closest('.pause-wrap').querySelector('.pause-namebar span');
       if (span) {
         span.textContent = cell.dataset.name;
         span.style.color = isEmpty ? '#888' : '#fff';
       }
     });
     cell.addEventListener('mouseleave', () => {
-      const span = cell.closest('.pause-screen').querySelector('.pause-namebar span');
+      const span = cell.closest('.pause-wrap').querySelector('.pause-namebar span');
       if (span) {
         span.textContent = '';
         span.style.color = '';
