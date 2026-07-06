@@ -39,8 +39,14 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 .drop-zone p{color:var(--text-dim)}
 .drop-zone strong{color:var(--gold)}
 .drop-zone .small{font-size:.75rem;margin-top:.5rem;opacity:.6}
-.drop-zone.loaded{border-style:solid;border-color:var(--green)}
-.drop-zone.loaded p{color:var(--green)}
+.drop-zone.loaded{border-style:solid;border-color:var(--green);padding:1.5rem}
+
+.file-info{text-align:left}
+.file-info-name{font-family:var(--font-display);font-size:1.1rem;color:var(--green);margin-bottom:.6rem}
+.file-info-details{display:flex;flex-wrap:wrap;gap:.4rem .75rem}
+.file-info-item{font-size:.8rem;color:var(--text);display:inline-flex;gap:.3rem}
+.file-info-label{color:var(--gold-dim);font-weight:600}
+.file-info-label::after{content:':'}
 
 .error-msg{background:rgba(193,59,59,.1);border:1px solid var(--red);color:#E5A0A0;padding:1rem;border-radius:6px;margin-bottom:1rem;font-size:.875rem}
 
@@ -249,7 +255,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
     <svg width="48" height="42" viewBox="0 0 48 42"><polygon points="24,0 36,21 12,21" fill="#C8A84E" opacity=".8"/><polygon points="12,21 24,42 0,42" fill="#C8A84E" opacity=".5"/><polygon points="36,21 48,42 24,42" fill="#C8A84E" opacity=".5"/></svg>
     <p>Drop your <strong>.sra</strong> or <strong>.sav</strong> file here or <strong>click</strong> to browse</p>
     <p class="small">N64 saves (.sra/.srm) or old SoH saves (.sav) for version upgrade</p>
-    <input type="file" id="fileInput" accept=".sra,.srm,.sav" style="display:none">
+    <input type="file" id="fileInput" accept=".sra,.srm,.sav,.SaveRAM" style="display:none">
   </div>
   <div id="slots"></div>
 </div>

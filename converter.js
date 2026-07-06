@@ -185,6 +185,120 @@ function parseSlotDisplay(d) {
   };
 }
 
+// ===== SOH JSON → DISPLAY MAPPER =====
+
+function sohDataToDisplay(data) {
+  const inv = data.inventory || {};
+  const eventChk = data.eventChkInf || [];
+  return {
+    name: decodeName(data.playerName || []),
+    linkAge: data.linkAge || 0,
+    deaths: data.deaths || 0,
+    healthCapacity: data.healthCapacity || 48,
+    health: data.health || 48,
+    magicLevel: data.magicLevel || 0,
+    magic: data.magic || 0,
+    rupees: data.rupees || 0,
+    isMagicAcquired: data.isMagicAcquired || data.magicAcquired || 0,
+    isDoubleDefenseAcquired: data.isDoubleDefenseAcquired || data.doubleDefense || 0,
+    items: inv.items || new Array(24).fill(255),
+    ammo: inv.ammo || new Array(16).fill(0),
+    equipment: inv.equipment || 0,
+    upgrades: inv.upgrades || 0,
+    questItems: inv.questItems || 0,
+    gsTokens: inv.gsTokens || 0,
+    defenseHearts: inv.defenseHearts || 0,
+    equips: data.equips || {buttonItems:[255,255,255,255,255,255,255,255], cButtonSlots:[255,255,255,255,255,255,255], equipment:0},
+    kokiriEmerald: (eventChk[0] >> 7) & 1,
+    goronsRuby: (eventChk[2] >> 5) & 1,
+    zorasSapphire: (eventChk[3] >> 7) & 1,
+  };
+}
+
+function buildSohSaveScreen(result, filename) {
+  let h = '<div class="save-screen-inner">';
+  if (result.error) {
+    h += `<div class="upgrade-error">${result.error}</div>`;
+  } else if (result.alreadyCurrent) {
+    h += '<div class="upgrade-ok">Version 4 (current). No upgrade needed.</div>';
+  } else if (result.upgraded) {
+    h += `<div class="upgrade-ok">Upgraded from v${result.fromVersion} → v4</div>`;
+    h += '<ul class="upgrade-changes">';
+    for (const c of result.changes) h += `<li>${c}</li>`;
+    h += '</ul>';
+    h += `<div class="upgrade-actions"><button class="export-btn" onclick="downloadJson(window._upgradedSave,'${filename}')">Download upgraded .sav</button></div>`;
+    window._upgradedSave = result.json;
+  }
+  h += '</div>';
+  return h;
+}
+
+function renderSohSlot(data, filename, result) {
+  const container = document.getElementById('slots');
+  const p = sohDataToDisplay(data);
+  const age = p.linkAge === 1 ? 'Child' : 'Adult';
+
+  let html = '';
+
+  // Slot bar
+  html += `<div class="slot-bar active" style="background-image:url('images/backgrounds/file1.png')">`;
+  html += `<span class="slot-file-label">File</span>`;
+  html += `<div class="slot-bar-content"><span class="slot-name">${p.name}</span><span class="slot-badge">${age}</span></div>`;
+  html += '</div>';
+
+  // Validation warnings
+  const warnings = validateSlot(p);
+  if (warnings.length) {
+    html += `<div class="slot-warning">${warnings.join(' | ')}</div>`;
+  }
+
+  // Panel
+  html += '<div class="slot-panel visible" data-slot="0">';
+
+  // Summary
+  html += `<div class="slot-summary-bg"><div class="slot-summary">`;
+  html += `<div class="slot-stats">
+    <div class="stat"><img src="images/ui/rupee.png">${p.rupees}</div>
+    <div class="stat"><img src="images/ui/skull.png">${p.deaths}</div>
+    <div class="stat"><img src="images/quest/gold_skulltula.png">${p.gsTokens}</div>
+  </div>`;
+  html += `<div class="slot-hearts">${buildHeartsHtml(p)}<div class="slot-quest">${buildQuestHtml(p)}</div></div>`;
+  html += '</div></div>';
+
+  // Pause screens
+  html += '<div class="pause-wrap">';
+  html += '<div class="pause-tabs">';
+  for (const tab of PAUSE_TABS) {
+    html += `<div class="pause-tab${tab.key==='items'?' active':''}" data-tab="${tab.key}" onclick="switchTab(0,'${tab.key}')">${tab.label}</div>`;
+  }
+  html += '</div>';
+
+  const screens = {
+    items: buildItemsScreen(p),
+    equip: buildEquipScreen(p),
+    quest: buildQuestScreen(p),
+    save: buildSohSaveScreen(result, filename),
+  };
+
+  for (const tab of PAUSE_TABS) {
+    html += `<div class="pause-screen${tab.key==='items'?' visible':''}" data-screen="${tab.key}">`;
+    html += `<div class="pause-bg-wrap">`;
+    html += `<img class="pause-bg" src="images/${tab.bg}" alt="">`;
+    html += `<div class="pause-content ${tab.key}-content">${screens[tab.key]}</div>`;
+    html += `</div>`;
+    if (tab.key !== 'save') {
+      html += `<div class="pause-namebar"><span data-namebar="0-${tab.key}"></span></div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += '</div>'; // pause-wrap
+  html += '</div>'; // slot-panel
+
+  container.innerHTML = html;
+  initNamebarHovers();
+}
+
 // ===== SOH JSON GENERATION =====
 
 function generateSohJson(d) {
@@ -883,47 +997,6 @@ function upgradeSohSave(json) {
   return {json, upgraded: true, fromVersion: baseVersion, changes};
 }
 
-function renderUpgradeResult(result, filename) {
-  const container = document.getElementById('slots');
-  let h = '<div class="upgrade-result">';
-  if (result.error) {
-    h += `<div class="upgrade-error">${result.error}</div>`;
-  } else if (result.alreadyCurrent) {
-    h += '<div class="upgrade-ok">This save is already at version 4 (current). No upgrade needed.</div>';
-  } else {
-    h += `<div class="upgrade-ok">Upgraded from v${result.fromVersion} → v4</div>`;
-    h += '<ul class="upgrade-changes">';
-    for (const c of result.changes) h += `<li>${c}</li>`;
-    h += '</ul>';
-    const name = decodeName(result.json.sections.base.data.playerName || []);
-    h += `<div class="upgrade-info">Player: ${name}</div>`;
-    h += '<div class="upgrade-actions">';
-    h += `<button class="export-btn" onclick="downloadJson(window._upgradedSave,'${filename}')">Download upgraded .sav</button>`;
-    h += '</div>';
-    window._upgradedSave = result.json;
-  }
-  h += '</div>';
-  container.innerHTML = h;
-}
-
-function handleSavFile(file) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const json = JSON.parse(e.target.result);
-      const originalVersion = json.sections?.base?.version || '?';
-      const result = upgradeSohSave(json);
-      const dz = document.getElementById('dropZone');
-      dz.classList.add('loaded');
-      dz.querySelector('p').innerHTML = `✓ <strong>${file.name}</strong> loaded (SoH .sav v${originalVersion})`;
-      renderUpgradeResult(result, file.name);
-    } catch (err) {
-      showError(`Failed to parse .sav file: ${err.message}`);
-    }
-  };
-  reader.onerror = () => showError('Failed to read file');
-  reader.readAsText(file);
-}
 
 // ===== EVENT HANDLERS =====
 
@@ -937,41 +1010,123 @@ function clearError() {
   document.getElementById('error').style.display = 'none';
 }
 
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  return (bytes / 1024).toFixed(1) + ' KB';
+}
+
+function showFileInfo(info) {
+  const dz = document.getElementById('dropZone');
+  dz.classList.add('loaded');
+  let h = '<div class="file-info">';
+  h += `<div class="file-info-name">${info.filename}</div>`;
+  h += '<div class="file-info-details">';
+  for (const [label, value] of info.details) {
+    h += `<span class="file-info-item"><span class="file-info-label">${label}</span> ${value}</span>`;
+  }
+  h += '</div></div>';
+  dz.innerHTML = h;
+}
+
+function handleBinary(raw, filename) {
+  let data = raw;
+  if (raw.length < 0x3D10) {
+    showError(`File too small (${formatSize(raw.length)}). Need at least 15,632 bytes for 3 save slots.`);
+    return;
+  }
+  if (raw.length < 0x8000) {
+    data = new Uint8Array(0x8000);
+    data.set(raw);
+  }
+
+  const order = detectByteOrder(data);
+  if (!order) {
+    showError('Cannot detect byte order — ZELD magic not found. Not a valid N64 OoT save file.');
+    return;
+  }
+
+  const be = toBigEndian(data, order);
+
+  // Count valid slots
+  let validCount = 0;
+  const slotNames = [];
+  for (let i = 0; i < 3; i++) {
+    const sd = be.slice(SLOT_OFFSETS[i], SLOT_OFFSETS[i] + SLOT_SIZE);
+    if (isSlotValid(sd)) {
+      validCount++;
+      slotNames.push(decodeName(Array.from({length:8}, (_,j) => u8(sd, 0x24+j))));
+    }
+  }
+
+  showFileInfo({
+    filename,
+    details: [
+      ['Format', 'N64 SRAM'],
+      ['Byte order', order],
+      ['Size', formatSize(raw.length)],
+      ['Slots', `${validCount}/3` + (slotNames.length ? ` (${slotNames.join(', ')})` : '')],
+    ]
+  });
+
+  renderSlots(be);
+}
+
+function handleJson(text, filename) {
+  try {
+    const json = JSON.parse(text);
+
+    if (!json.sections || !json.sections.base) {
+      showError('Invalid JSON: no "sections.base" found. Not a SoH save file.');
+      return;
+    }
+
+    const baseVersion = json.sections.base.version;
+    const data = json.sections.base.data;
+    const name = data.playerName ? decodeName(data.playerName) : '?';
+    const fileType = json.fileType === 1 ? 'Randomizer' : 'Vanilla';
+    const sections = Object.keys(json.sections).join(', ');
+
+    const originalVersion = baseVersion;
+    const result = upgradeSohSave(json);
+
+    showFileInfo({
+      filename,
+      details: [
+        ['Format', 'SoH JSON'],
+        ['Base version', `v${originalVersion}` + (result.upgraded ? ` → v4` : ' (current)')],
+        ['Type', fileType],
+        ['Player', name],
+        ['Sections', sections],
+      ]
+    });
+
+    const finalData = result.json.sections.base.data;
+    renderSohSlot(finalData, filename, result);
+  } catch (err) {
+    showError(`Failed to parse JSON: ${err.message}`);
+  }
+}
+
 function handleFile(file) {
   clearError();
   if (!file) return;
-
-  if (file.name.endsWith('.sav')) {
-    handleSavFile(file);
-    return;
-  }
 
   const reader = new FileReader();
   reader.onload = function(e) {
     const raw = new Uint8Array(e.target.result);
 
-    let data = raw;
-    if (raw.length < 0x3D10) {
-      showError(`Invalid file size: too small (${raw.length} bytes). Need at least 15632 bytes for 3 save slots.`);
-      return;
-    }
-    if (raw.length < 0x8000) {
-      data = new Uint8Array(0x8000);
-      data.set(raw);
+    // Detect by content: if first non-whitespace byte is '{', treat as JSON
+    let firstChar = 0;
+    for (let i = 0; i < Math.min(raw.length, 64); i++) {
+      if (raw[i] > 32) { firstChar = raw[i]; break; }
     }
 
-    const order = detectByteOrder(data);
-    if (!order) {
-      showError('Cannot detect byte order — ZELD magic not found. Is this a valid OOT .sra file?');
-      return;
+    if (firstChar === 0x7B) { // '{'
+      const text = new TextDecoder().decode(raw);
+      handleJson(text, file.name);
+    } else {
+      handleBinary(raw, file.name);
     }
-
-    const be = toBigEndian(data, order);
-    const dz = document.getElementById('dropZone');
-    dz.classList.add('loaded');
-    dz.querySelector('p').innerHTML = `✓ <strong>${file.name}</strong> loaded (${order}) — drop another to replace`;
-
-    renderSlots(be);
   };
   reader.onerror = () => showError('Failed to read file');
   reader.readAsArrayBuffer(file);
