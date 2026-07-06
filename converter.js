@@ -785,6 +785,146 @@ function exportFromPreview() {
   exportChecked(callerSlot);
 }
 
+// ===== SOH SAVE UPGRADE (v1/v2/v3 → v4) =====
+
+const DEFAULT_FW = {pos:{x:0,y:0,z:0},yaw:0,playerParams:0,entranceIndex:0,roomIndex:0,set:0,tempSwchFlags:0,tempCollectFlags:0};
+
+const DEFAULT_SOH_STATS = {
+  buildVersion:"",buildVersionMajor:0,buildVersionMinor:0,buildVersionPatch:0,
+  counts:new Array(100).fill(0),dungeonKeys:new Array(20).fill(0),
+  entrancesDiscovered:new Array(66).fill(0),fileCreatedAt:0,firstInput:0,
+  heartContainers:0,heartPieces:0,itemTimestamps:new Array(200).fill(0),
+  pauseTimer:0,playTimer:0,rtaTiming:false,sceneTimestamps:[],
+  scenesDiscovered:new Array(4).fill(0),tsIdx:0
+};
+
+function renameField(obj, oldKey, newKey) {
+  if (oldKey in obj && !(newKey in obj)) {
+    obj[newKey] = obj[oldKey];
+    delete obj[oldKey];
+  }
+}
+
+function ensureField(obj, key, defaultVal) {
+  if (!(key in obj)) obj[key] = defaultVal;
+}
+
+function extractSohStats(data) {
+  const stats = {};
+  const statFields = ['heartPieces','heartContainers','dungeonKeys','rtaTiming','firstInput',
+    'fileCreatedAt','playTimer','pauseTimer','timestamps','itemTimestamps','counts',
+    'scenesDiscovered','entrancesDiscovered','buildVersion','buildVersionMajor',
+    'buildVersionMinor','buildVersionPatch','sceneTimestamps','tsIdx'];
+  for (const f of statFields) {
+    if (f in data) {
+      stats[f] = data[f];
+      delete data[f];
+    }
+  }
+  if ('timestamps' in stats && !('itemTimestamps' in stats)) {
+    stats.itemTimestamps = stats.timestamps;
+    delete stats.timestamps;
+  }
+  for (const [k, v] of Object.entries(DEFAULT_SOH_STATS)) {
+    ensureField(stats, k, JSON.parse(JSON.stringify(v)));
+  }
+  return stats;
+}
+
+function upgradeSohSave(json) {
+  if (!json.sections || !json.sections.base) return {json, upgraded: false, error: 'Invalid SoH save: no base section'};
+
+  const baseVersion = json.sections.base.version;
+  if (baseVersion === 4) return {json, upgraded: false, alreadyCurrent: true};
+  if (baseVersion < 1 || baseVersion > 3) return {json, upgraded: false, error: `Unknown base version: ${baseVersion}`};
+
+  const data = json.sections.base.data;
+  const changes = [];
+
+  if (baseVersion <= 1) {
+    renameField(data, 'magicAcquired', 'isMagicAcquired');
+    renameField(data, 'doubleMagic', 'isDoubleMagicAcquired');
+    renameField(data, 'doubleDefense', 'isDoubleDefenseAcquired');
+    renameField(data, 'scarecrowCustomSongSet', 'scarecrowLongSongSet');
+    renameField(data, 'scarecrowCustomSong', 'scarecrowLongSong');
+    changes.push('Renamed magic/scarecrow fields (v1 → v2)');
+  }
+
+  if (baseVersion <= 2) {
+    ensureField(data, 'isMasterQuest', false);
+    ensureField(data, 'backupFW', JSON.parse(JSON.stringify(DEFAULT_FW)));
+    ensureField(data, 'dogParams', 0);
+    changes.push('Added backupFW, dogParams, isMasterQuest (v2 → v3)');
+  }
+
+  // v1/v2/v3 may have sohStats embedded in base data — extract to separate section
+  const hasEmbeddedStats = ['heartPieces','heartContainers','playTimer','counts','timestamps','itemTimestamps']
+    .some(f => f in data);
+  if (hasEmbeddedStats) {
+    const stats = extractSohStats(data);
+    json.sections.sohStats = {data: stats, version: 1};
+    changes.push('Extracted sohStats to separate section');
+  }
+
+  ensureField(data, 'filenameLanguage', 2);
+  ensureField(data, 'maskMemory', 0);
+  ensureField(data, 'randomizerInf', new Array(179).fill(0));
+  changes.push('Added filenameLanguage, maskMemory (→ v4)');
+
+  json.sections.base.version = 4;
+  ensureField(json, 'version', 1);
+  ensureField(json, 'fileType', 0);
+  if (!json.sections.sohStats) {
+    json.sections.sohStats = {data: JSON.parse(JSON.stringify(DEFAULT_SOH_STATS)), version: 1};
+  }
+  ensureField(json.sections, 'itemTrackerData', {data:{personalNotes:""}, version:1});
+  ensureField(json.sections, 'trackerData', {data:{areasSpoiled:4294967295,checkStatus:[]}, version:1});
+
+  return {json, upgraded: true, fromVersion: baseVersion, changes};
+}
+
+function renderUpgradeResult(result, filename) {
+  const container = document.getElementById('slots');
+  let h = '<div class="upgrade-result">';
+  if (result.error) {
+    h += `<div class="upgrade-error">${result.error}</div>`;
+  } else if (result.alreadyCurrent) {
+    h += '<div class="upgrade-ok">This save is already at version 4 (current). No upgrade needed.</div>';
+  } else {
+    h += `<div class="upgrade-ok">Upgraded from v${result.fromVersion} → v4</div>`;
+    h += '<ul class="upgrade-changes">';
+    for (const c of result.changes) h += `<li>${c}</li>`;
+    h += '</ul>';
+    const name = decodeName(result.json.sections.base.data.playerName || []);
+    h += `<div class="upgrade-info">Player: ${name}</div>`;
+    h += '<div class="upgrade-actions">';
+    h += `<button class="export-btn" onclick="downloadJson(window._upgradedSave,'${filename}')">Download upgraded .sav</button>`;
+    h += '</div>';
+    window._upgradedSave = result.json;
+  }
+  h += '</div>';
+  container.innerHTML = h;
+}
+
+function handleSavFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const json = JSON.parse(e.target.result);
+      const originalVersion = json.sections?.base?.version || '?';
+      const result = upgradeSohSave(json);
+      const dz = document.getElementById('dropZone');
+      dz.classList.add('loaded');
+      dz.querySelector('p').innerHTML = `✓ <strong>${file.name}</strong> loaded (SoH .sav v${originalVersion})`;
+      renderUpgradeResult(result, file.name);
+    } catch (err) {
+      showError(`Failed to parse .sav file: ${err.message}`);
+    }
+  };
+  reader.onerror = () => showError('Failed to read file');
+  reader.readAsText(file);
+}
+
 // ===== EVENT HANDLERS =====
 
 function showError(msg) {
@@ -800,6 +940,11 @@ function clearError() {
 function handleFile(file) {
   clearError();
   if (!file) return;
+
+  if (file.name.endsWith('.sav')) {
+    handleSavFile(file);
+    return;
+  }
 
   const reader = new FileReader();
   reader.onload = function(e) {

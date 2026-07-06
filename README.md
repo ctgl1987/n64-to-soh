@@ -2,7 +2,16 @@
 
 Web-based converter that imports N64 emulator save files (`.sra`, `.srm`) and converts them to [Ship of Harkinian](https://www.shipofharkinian.com/) `.sav` format (JSON).
 
-The tool visually displays all 3 save slots with detailed game info using OOT textures and icons, simulating the in-game pause menu screens (Items, Equipment, Quest, Save).
+Visually displays all 3 save slots using the in-game pause menu layout (Items, Equipment, Quest, Save) with original sprite icons.
+
+## Features
+
+- **Visual preview** of inventory, equipment, quest status, and dungeon progress
+- **Save validation** with warnings for out-of-range values
+- **Basic editing** of player name, rupees, and health before export
+- **Multi-slot export** with checkboxes to export multiple slots at once
+- **Export preview** modal showing a summary before downloading
+- **Auto byte-order detection** across BE, LE, BS, and WS formats
 
 ## Compatibility
 
@@ -16,7 +25,7 @@ The tool visually displays all 3 save slots with detailed game info using OOT te
 | Simple64 / RMG | `.sra` | BE / LE |
 | BizHawk | `.SaveRAM` | BE |
 
-The converter auto-detects byte order (BE, LE, BS, WS) by scanning for the `ZELD` magic across all 3 save slots. Files smaller than 32KB (like PJ64 saves) are automatically padded.
+Files smaller than 32KB (like PJ64 saves) are automatically padded.
 
 ### SoH version
 
@@ -28,19 +37,14 @@ Generates saves compatible with **Ship of Harkinian Ackbar Delta (9.2.3)** — s
 2. Drag and drop your `.sra` / `.srm` file (or click to browse)
 3. Click on a file slot to expand it
 4. Browse Items, Equipment, Quest screens to verify your save data
-5. Go to the Save tab, name your file, and click **Export .sav**
-6. Place the exported `.sav` in your SoH save directory
+5. Optionally edit player name, rupees, or health
+6. Go to the Save tab, select slots to export, and click **Export .sav**
+7. Place the exported `.sav` in your SoH save directory
 
 No server required — everything runs client-side in the browser.
 
 ## Save format
 
-The N64 SRAM (32KB) contains 3 save slots + 3 backups. Each slot is a C struct stored in big-endian format on the N64, but emulators may apply byte swapping depending on their PI interface emulation.
-
-Key fields parsed:
-- **Inventory**: 24 item slots, ammo counts, equipment flags, upgrade tiers
-- **Quest items**: medallions, songs, spiritual stones, Stone of Agony, Gerudo Card, heart pieces, skull tokens — all packed as bit flags in a single `u32`
-- **Scene flags**: chest states, switches, room clears, collectibles for all 124 scenes
-- **Dungeon data**: boss keys, compasses, maps, small key counts
+The N64 SRAM (32KB) contains 3 save slots + 3 backups. Each slot stores inventory, quest flags, scene flags, and dungeon data as a C struct in big-endian format. Emulators may apply byte swapping depending on their PI interface emulation.
 
 The converter reads the binary SRAM, displays it visually, and outputs a SoH-compatible JSON `.sav` with all sections (`base`, `sohStats`, `itemTrackerData`, `trackerData`).
