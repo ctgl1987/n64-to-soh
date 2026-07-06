@@ -31,7 +31,7 @@ const SLOT_LABELS = [
   'Sticks','Nuts','Bombs','Bow','Fire Arrow',"Din's Fire",
   'Slingshot','Ocarina','Bombchu','Hookshot','Ice Arrow',"Farore's Wind",
   'Boomerang','Lens','Beans','Hammer','Light Arrow',"Nayru's Love",
-  'Trade','Trade','Bottle','Bottle','Bottle','Bottle'
+  'Bottle','Bottle','Bottle','Bottle','Trade','Trade'
 ];
 
 const AMMO_SLOTS = new Set([0, 1, 2, 3, 6, 8, 14]);
@@ -40,7 +40,7 @@ const SLOT_DEFAULTS = [
   0, 1, 2, 3, 4, 5,       // sticks, nuts, bombs, bow, fire arrow, din's fire
   6, 7, 9, 10, 12, 13,    // slingshot, fairy ocarina, bombchu, hookshot, ice arrow, farore's wind
   14, 15, 16, 17, 18, 19,  // boomerang, lens, beans, hammer, light arrow, nayru's love
-  45, 33, 20, 20, 20, 20   // adult trade, child trade, bottles
+  20, 20, 20, 20, 45, 33   // bottles, adult trade, child trade
 ];
 
 const SLOT_DEFAULT_AMMO = { 0:10, 1:20, 2:10, 3:30, 6:30, 8:20, 14:1 };
@@ -49,12 +49,12 @@ const SLOT_ITEMS = [
   [0],[1],[2],[3],[4],[5],
   [6],[7,8],[9],[10,11],[12],[13],
   [14],[15],[16],[17],[18],[19],
+  [20,21,22,23,24,25,26,27,28,29,30,31,32],
+  [20,21,22,23,24,25,26,27,28,29,30,31,32],
+  [20,21,22,23,24,25,26,27,28,29,30,31,32],
+  [20,21,22,23,24,25,26,27,28,29,30,31,32],
   [45,46,47,48,49,50,51,52,53,54,55],
   [33,34,35,36,37,38,39,40,41,42,43],
-  [20,21,22,23,24,25,26,27,28,29,30,31,32],
-  [20,21,22,23,24,25,26,27,28,29,30,31,32],
-  [20,21,22,23,24,25,26,27,28,29,30,31,32],
-  [20,21,22,23,24,25,26,27,28,29,30,31,32],
 ];
 
 const SONGS = [
