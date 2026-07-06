@@ -36,6 +36,27 @@ const SLOT_LABELS = [
 
 const AMMO_SLOTS = new Set([0, 1, 2, 3, 6, 8, 14]);
 
+const SLOT_DEFAULTS = [
+  0, 1, 2, 3, 4, 5,       // sticks, nuts, bombs, bow, fire arrow, din's fire
+  6, 7, 9, 10, 12, 13,    // slingshot, fairy ocarina, bombchu, hookshot, ice arrow, farore's wind
+  14, 15, 16, 17, 18, 19,  // boomerang, lens, beans, hammer, light arrow, nayru's love
+  45, 33, 20, 20, 20, 20   // adult trade, child trade, bottles
+];
+
+const SLOT_DEFAULT_AMMO = { 0:10, 1:20, 2:10, 3:30, 6:30, 8:20, 14:1 };
+
+const SLOT_ITEMS = [
+  [0],[1],[2],[3],[4],[5],
+  [6],[7,8],[9],[10,11],[12],[13],
+  [14],[15],[16],[17],[18],[19],
+  [45,46,47,48,49,50,51,52,53,54,55],
+  [33,34,35,36,37,38,39,40,41,42,43],
+  [20,21,22,23,24,25,26,27,28,29,30,31,32],
+  [20,21,22,23,24,25,26,27,28,29,30,31,32],
+  [20,21,22,23,24,25,26,27,28,29,30,31,32],
+  [20,21,22,23,24,25,26,27,28,29,30,31,32],
+];
+
 const SONGS = [
   {name:"Zelda's Lullaby", bit:12, img:'note_white.png'},
   {name:"Epona's Song", bit:13, img:'note_white.png'},
@@ -59,12 +80,14 @@ const EQUIP_CATS = [
 ];
 
 const UPGRADE_DEFS = [
-  {name:'Quiver', shift:0, vals:['—','Quiver (Holds 30)','Quiver (Holds 40)','Quiver (Holds 50)'], imgKey:'quiver'},
-  {name:'Bomb Bag', shift:3, vals:['—','Bomb Bag (Holds 20)','Bomb Bag (Holds 30)','Bomb Bag (Holds 40)'], imgKey:'bomb_bag'},
-  {name:'Strength', shift:6, vals:['—',"Goron's Bracelet",'Silver Gauntlets','Golden Gauntlets'], imgKey:'gauntlets'},
-  {name:'Scale', shift:9, vals:['—','Silver Scale','Golden Scale'], imgKey:'scale'},
-  {name:'Wallet', shift:12, vals:["Child's Wallet (99)","Adult's Wallet (200)","Giant's Wallet (500)"], imgKey:null},
-  {name:'Bullet Bag', shift:15, vals:['—','Bullet Bag (Holds 30)','Bullet Bag (Holds 40)','Bullet Bag (Holds 50)'], imgKey:'bullet_bag'},
+  {name:'Quiver', shift:0, mask:7, vals:['—','Quiver (30)','Quiver (40)','Quiver (50)'], imgKey:'quiver'},
+  {name:'Bomb Bag', shift:3, mask:7, vals:['—','Bomb Bag (20)','Bomb Bag (30)','Bomb Bag (40)'], imgKey:'bomb_bag'},
+  {name:'Strength', shift:6, mask:7, vals:['—',"Goron's Bracelet",'Silver Gauntlets','Golden Gauntlets'], imgKey:'gauntlets'},
+  {name:'Scale', shift:9, mask:7, vals:['—','Silver Scale','Golden Scale'], imgKey:'scale'},
+  {name:'Wallet', shift:12, mask:3, vals:["Child's Wallet (99)","Adult's Wallet (200)","Giant's Wallet (500)","Tycoon's Wallet (999)"], imgKey:null},
+  {name:'Bullet Bag', shift:14, mask:7, vals:['—','Bullet Bag (30)','Bullet Bag (40)','Bullet Bag (50)'], imgKey:'bullet_bag'},
+  {name:'Sticks', shift:17, mask:7, vals:['—','10 Sticks','20 Sticks','30 Sticks'], imgKey:null},
+  {name:'Nuts', shift:20, mask:7, vals:['—','20 Nuts','30 Nuts','40 Nuts'], imgKey:null},
 ];
 
 // ===== BINARY READERS =====
@@ -216,18 +239,19 @@ function sohDataToDisplay(data) {
 }
 
 function buildSohSaveScreen(result, filename) {
+  window._upgradedSave = result.json;
   let h = '<div class="save-screen-inner">';
   if (result.error) {
     h += `<div class="upgrade-error">${result.error}</div>`;
   } else if (result.alreadyCurrent) {
-    h += '<div class="upgrade-ok">Version 4 (current). No upgrade needed.</div>';
+    h += '<div class="upgrade-ok">Version 4 (current)</div>';
+    h += `<div class="upgrade-actions"><button class="export-btn" onclick="downloadSohSave('${filename}')">Download .sav</button> <button class="reset-btn" onclick="resetEdits(0)">Reset</button></div>`;
   } else if (result.upgraded) {
     h += `<div class="upgrade-ok">Upgraded from v${result.fromVersion} → v4</div>`;
     h += '<ul class="upgrade-changes">';
     for (const c of result.changes) h += `<li>${c}</li>`;
     h += '</ul>';
-    h += `<div class="upgrade-actions"><button class="export-btn" onclick="downloadJson(window._upgradedSave,'${filename}')">Download upgraded .sav</button></div>`;
-    window._upgradedSave = result.json;
+    h += `<div class="upgrade-actions"><button class="export-btn" onclick="downloadSohSave('${filename}')">Download .sav</button> <button class="reset-btn" onclick="resetEdits(0)">Reset</button></div>`;
   }
   h += '</div>';
   return h;
@@ -236,6 +260,9 @@ function buildSohSaveScreen(result, filename) {
 function renderSohSlot(data, filename, result) {
   const container = document.getElementById('slots');
   const p = sohDataToDisplay(data);
+  slotParsed[0] = p;
+  slotOriginal[0] = JSON.parse(JSON.stringify(p));
+  slotValidity[0] = true;
   const age = p.linkAge === 1 ? 'Child' : 'Adult';
 
   let html = '';
@@ -274,9 +301,9 @@ function renderSohSlot(data, filename, result) {
   html += '</div>';
 
   const screens = {
-    items: buildItemsScreen(p),
-    equip: buildEquipScreen(p),
-    quest: buildQuestScreen(p),
+    items: buildItemsScreen(p, 0),
+    equip: buildEquipScreen(p, 0),
+    quest: buildQuestScreen(p, 0),
     save: buildSohSaveScreen(result, filename),
   };
 
@@ -413,6 +440,7 @@ const PAUSE_TABS = [
 let currentBE = null;
 let slotValidity = [false, false, false];
 let slotParsed = [null, null, null];
+let slotOriginal = [null, null, null];
 
 function switchTab(slotIdx, tabKey) {
   const panel = document.querySelector(`.slot-panel[data-slot="${slotIdx}"]`);
@@ -468,48 +496,69 @@ function buildQuestHtml(p) {
   return h;
 }
 
-function buildItemsScreen(p) {
-  let h = '<div class="items-grid">';
+function buildItemsScreen(p, slotIdx) {
+  const orig = slotOriginal[slotIdx];
+
+  let h = `<button class="edit-toggle-btn" onclick="event.stopPropagation();openItemsEdit(${slotIdx})" title="Edit items">✎</button>`;
+  h += '<div class="items-grid">';
   for (let j = 0; j < 24; j++) {
     const itemId = p.items[j];
-    if (itemId === 255) {
-      h += `<div class="item-cell empty" data-name="${SLOT_LABELS[j]}"><div class="item-icon-empty"></div></div>`;
+    const origId = orig ? orig.items[j] : itemId;
+    const isAdded = itemId !== 255 && origId === 255;
+    const wasRemoved = origId !== 255 && itemId === 255;
+
+    if (wasRemoved) {
+      const name = ITEM_NAMES[origId] || `Item(${origId})`;
+      const img = ITEM_IMAGES[origId];
+      h += `<div class="item-cell has-item toggled-off" data-name="${name} (removed)" title="${name} (removed)">`;
+      if (img) h += `<img class="item-icon" src="images/items/${img}.png" alt="${name}">`;
+      else h += `<div class="item-icon-empty"></div>`;
+      h += '</div>';
+    } else if (itemId === 255) {
+      h += `<div class="item-cell empty" data-name="${SLOT_LABELS[j]}" title="${SLOT_LABELS[j]}"><div class="item-icon-empty"></div></div>`;
     } else {
       const name = ITEM_NAMES[itemId] || `Item(${itemId})`;
       const img = ITEM_IMAGES[itemId];
       const ammo = AMMO_SLOTS.has(j) && p.ammo[j] > 0 ? `<span class="item-ammo">${p.ammo[j]}</span>` : '';
-      h += `<div class="item-cell has-item" data-name="${name}">`;
+      h += `<div class="item-cell has-item${isAdded?' item-added':''}" data-name="${name}" title="${name}">`;
       if (img) h += `<img class="item-icon" src="images/items/${img}.png" alt="${name}">`;
       else h += `<div class="item-icon-empty"></div>`;
       h += `${ammo}</div>`;
     }
   }
   h += '</div>';
+
+  h += buildItemsEditPanel(p, slotIdx);
   return h;
 }
 
-function buildEquipScreen(p) {
+function buildEquipScreen(p, slotIdx) {
+  const orig = slotOriginal[slotIdx];
   const upgs = [];
   for (const up of UPGRADE_DEFS) {
-    const val = (p.upgrades >> up.shift) & 0x7;
-    if (val > 0 && val < up.vals.length) {
+    const val = (p.upgrades >> up.shift) & up.mask;
+    const origVal = orig ? (orig.upgrades >> up.shift) & up.mask : val;
+    if (val > 0) {
+      const added = val !== origVal;
+      const label = val < up.vals.length ? up.vals[val] : `${up.name} (${val})`;
       const imgKey = up.imgKey;
-      if (imgKey) upgs.push({title:up.vals[val], img:`upg_${imgKey}${val}.png`});
-      else upgs.push({title:up.vals[val], text:up.vals[val]});
+      if (imgKey && val < up.vals.length) upgs.push({title:label, img:`upg_${imgKey}${val}.png`, added});
+      else upgs.push({title:label, text:label, added});
     }
   }
   if (p.isMagicAcquired) {
-    upgs.push({title:`Magic: ${p.magic} / ${p.magicLevel === 2 ? 96 : 48}`, img:'upg_scale1.png', isMagic:true});
+    upgs.push({title:`Magic: ${p.magic} / ${p.magicLevel === 2 ? 96 : 48}`, img:'upg_scale1.png', isMagic:true, added:false});
   }
 
-  let h = '<div class="equip-layout">';
+  let h = `<button class="edit-toggle-btn" onclick="event.stopPropagation();openEquipEdit(${slotIdx})" title="Edit equipment">✎</button>`;
+  h += '<div class="equip-layout">';
 
   // Left: upgrades column
   h += '<div class="equip-upgrades">';
   for (let row = 0; row < 4; row++) {
     if (row < upgs.length) {
       const u = upgs[row];
-      h += `<div class="eq-cell eq-owned" data-name="${u.title}">`;
+      h += `<div class="eq-cell eq-owned${u.added?' eq-added':''}" data-name="${u.title}" title="${u.title}">`;
       if (u.img && !u.isMagic) h += `<img class="eq-icon" src="images/upgrades/${u.img}" alt="${u.title}">`;
       else if (u.isMagic) h += `<img class="eq-icon" src="images/upgrades/upg_scale1.png" alt="Magic" style="filter:hue-rotate(200deg)">`;
       else h += `<span class="upg-text">${u.text}</span>`;
@@ -530,10 +579,12 @@ function buildEquipScreen(p) {
     const equipped = (p.equips.equipment >> cat.bits[0]) & 0xF;
     for (let j = 0; j < 3; j++) {
       const owned = (p.equipment >> cat.bits[j]) & 1;
+      const origOwned = orig ? (orig.equipment >> cat.bits[j]) & 1 : owned;
       const isEquipped = owned && (equipped === j + 1);
+      const isAdded = owned && !origOwned;
       const cls = isEquipped ? 'eq-equipped' : owned ? 'eq-owned' : 'eq-empty';
       const img = EQUIP_IMAGES[row][j];
-      h += `<div class="eq-cell ${cls}" data-name="${cat.items[j]}">`;
+      h += `<div class="eq-cell ${cls}${isAdded?' eq-added':''}" data-name="${cat.items[j]}" title="${cat.items[j]}">`;
       if (owned) h += `<img class="eq-icon" src="images/equipment/${img}.png" alt="${cat.items[j]}">`;
       h += '</div>';
     }
@@ -541,76 +592,216 @@ function buildEquipScreen(p) {
   h += '</div>';
 
   h += '</div>';
+
+  // Edit panel (hidden)
+  h += buildEquipEditPanel(p, slotIdx);
+
   return h;
 }
 
-function buildQuestScreen(p) {
-  let h = '<div class="quest-layout">';
+function buildEquipEditPanel(p, slotIdx) {
+  const orig = slotOriginal[slotIdx];
+  let h = `<div class="edit-panel" id="equipEditPanel${slotIdx}" style="display:none">`;
+  h += '<div class="edit-panel-header"><span>Edit Equipment</span>';
+  h += `<button class="edit-panel-close" onclick="event.stopPropagation();closeEquipEdit(${slotIdx})">✕</button></div>`;
+  h += '<div class="edit-panel-body">';
+
+  // Equipment categories
+  for (let row = 0; row < 4; row++) {
+    const cat = EQUIP_CATS[row];
+    h += `<div class="edit-category"><div class="edit-cat-title">${cat.name}</div>`;
+    for (let j = 0; j < 3; j++) {
+      const owned = (p.equipment >> cat.bits[j]) & 1;
+      const wasOriginal = orig ? (orig.equipment >> cat.bits[j]) & 1 : owned;
+      const isAdded = owned && !wasOriginal;
+      const img = EQUIP_IMAGES[row][j];
+      h += `<label class="edit-item${isAdded ? ' edit-added' : ''}" onclick="event.stopPropagation()">`;
+      h += `<input type="checkbox" ${owned ? 'checked' : ''} onchange="toggleEquipItem(${slotIdx},${cat.bits[j]})">`;
+      h += `<img class="edit-item-icon" src="images/equipment/${img}.png">`;
+      h += `<span class="edit-item-name">${cat.items[j]}</span>`;
+      if (wasOriginal && owned) h += '<span class="edit-badge edit-badge-orig">save</span>';
+      if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+      h += '</label>';
+    }
+    h += '</div>';
+  }
+
+  // Upgrades
+  for (const up of UPGRADE_DEFS) {
+    const val = (p.upgrades >> up.shift) & up.mask;
+    const origVal = orig ? (orig.upgrades >> up.shift) & up.mask : val;
+    h += `<div class="edit-category"><div class="edit-cat-title">${up.name}</div>`;
+    const maxV = Math.max(up.vals.length, val + 1);
+    for (let v = 0; v < maxV; v++) {
+      const label = v < up.vals.length ? up.vals[v] : `${up.name} (Level ${v})`;
+      const isChanged = v === val && v !== origVal;
+      h += `<label class="edit-radio${isChanged ? ' edit-added' : ''}" onclick="event.stopPropagation()">`;
+      h += `<input type="radio" name="upg_${slotIdx}_${up.shift}" value="${v}" ${v === val ? 'checked' : ''} onchange="setUpgrade(${slotIdx},${up.shift},${v})">`;
+      h += `<span>${label}</span>`;
+      h += '</label>';
+    }
+    h += '</div>';
+  }
+
+  h += '</div></div>';
+  return h;
+}
+
+function buildQuestScreen(p, slotIdx) {
+  const orig = slotOriginal[slotIdx];
+
+  let h = `<button class="edit-toggle-btn" onclick="event.stopPropagation();openQuestEdit(${slotIdx})" title="Edit quest">✎</button>`;
+  h += '<div class="quest-layout">';
 
   // === Top-left: quest items (2x2: agony, gerudo, skulltula+count) ===
   const hasAgony = (p.questItems >> 21) & 1;
   const hasGerudo = (p.questItems >> 22) & 1;
   const heartPieces = (p.questItems >>> 28) & 0xF;
   h += '<div class="quest-items-area">';
-  h += `<div class="qi-cell${hasAgony?'':' qi-off'}" data-name="Stone of Agony"><img class="qi-img" src="images/quest/quest_stone_agony.webp"></div>`;
-  h += `<div class="qi-cell${hasGerudo?'':' qi-off'}" data-name="Gerudo Card"><img class="qi-img" src="images/quest/quest_gerudo_card.webp"></div>`;
-  h += `<div class="qi-cell" data-name="Gold Skulltulas: ${p.gsTokens}"><img class="qi-skull-img" src="images/quest/gold_skulltula.png"></div>`;
-  h += `<div class="qi-cell qi-count" data-name="Gold Skulltulas: ${p.gsTokens}"><span class="qi-skull-count">${p.gsTokens}</span></div>`;
+  h += `<div class="qi-cell${hasAgony?'':' qi-off'}" data-name="Stone of Agony" title="Stone of Agony"><img class="qi-img" src="images/quest/quest_stone_agony.webp"></div>`;
+  h += `<div class="qi-cell${hasGerudo?'':' qi-off'}" data-name="Gerudo Card" title="Gerudo Card"><img class="qi-img" src="images/quest/quest_gerudo_card.webp"></div>`;
+  h += `<div class="qi-cell" data-name="Gold Skulltulas: ${p.gsTokens}" title="Gold Skulltulas: ${p.gsTokens}"><img class="qi-skull-img" src="images/quest/gold_skulltula.png"></div>`;
+  h += `<div class="qi-cell qi-count" data-name="Gold Skulltulas: ${p.gsTokens}" title="Gold Skulltulas: ${p.gsTokens}"><span class="qi-skull-count">${p.gsTokens}</span></div>`;
   h += '</div>';
 
-  // === Heart pieces (2x2 grid, 3 quarters — 4th completes a container) ===
-  const hpImgs = ['h_tl.png','h_bl.png','h_br.png'];
+  // === Heart pieces (2x2 grid) ===
   h += '<div class="quest-hearts-area">';
-  h += `<div class="qhp${heartPieces>=1?'':' qi-off'}" data-name="Heart Piece 1/4"><img src="images/quest/h_tl.png"></div>`;
+  h += `<div class="qhp${heartPieces>=1?'':' qi-off'}" data-name="Heart Piece 1/4" title="Heart Piece 1/4"><img src="images/quest/h_tl.png"></div>`;
   h += '<div class="qhp qi-off"></div>';
-  h += `<div class="qhp${heartPieces>=2?'':' qi-off'}" data-name="Heart Piece 2/4"><img src="images/quest/h_bl.png"></div>`;
-  h += `<div class="qhp${heartPieces>=3?'':' qi-off'}" data-name="Heart Piece 3/4"><img src="images/quest/h_br.png"></div>`;
+  h += `<div class="qhp${heartPieces>=2?'':' qi-off'}" data-name="Heart Piece 2/4" title="Heart Piece 2/4"><img src="images/quest/h_bl.png"></div>`;
+  h += `<div class="qhp${heartPieces>=3?'':' qi-off'}" data-name="Heart Piece 3/4" title="Heart Piece 3/4"><img src="images/quest/h_br.png"></div>`;
   h += '</div>';
 
-  // === Top-right: medallions in hexagonal layout ===
+  // === Top-right: medallions ===
   const medalNames = ['light','forest','fire','water','spirit','shadow'];
   const medalLabels = ['Light Medallion','Forest Medallion','Fire Medallion','Water Medallion','Spirit Medallion','Shadow Medallion'];
   const medalBits = [5,0,1,2,3,4];
   h += '<div class="quest-medallions">';
   for (let m = 0; m < 6; m++) {
     const has = (p.questItems >> medalBits[m]) & 1;
-    h += `<div class="qm qm-${medalNames[m]}${has?'':' qi-off'}" data-name="${medalLabels[m]}">`;
+    h += `<div class="qm qm-${medalNames[m]}${has?'':' qi-off'}" data-name="${medalLabels[m]}" title="${medalLabels[m]}">`;
     h += `<img src="images/quest/icon_${medalNames[m]}.png">`;
     h += '</div>';
   }
   h += '</div>';
 
-  // === Bottom-left: songs grid (empty cells for unobtained) ===
+  // === Bottom-left: songs grid ===
   h += '<div class="quest-songs">';
   for (const song of SONGS) {
     const has = (p.questItems >> song.bit) & 1;
+    h += `<div class="qs${has?' qs-on':''}" data-name="${song.name}" title="${song.name}">`;
     if (has) {
-      h += `<div class="qs qs-on" data-name="${song.name}">`;
       h += `<img class="qs-note" src="images/quest/${song.img}" alt="${song.name}">`;
-      h += '</div>';
-    } else {
-      h += '<div class="qs"></div>';
     }
+    h += '</div>';
   }
   h += '</div>';
 
-  // === Bottom-right: spiritual stones (only show obtained) ===
+  // === Bottom-right: spiritual stones ===
   const stones = [
-    {name:'Kokiri Emerald', img:'kokiris_emerald.png', has:p.kokiriEmerald},
-    {name:"Goron's Ruby", img:'gorons_ruby.png', has:p.goronsRuby},
-    {name:"Zora's Sapphire", img:'zoras_sapphire.png', has:p.zorasSapphire},
+    {name:'Kokiri Emerald', img:'kokiris_emerald.png', has:p.kokiriEmerald, key:'kokiriEmerald'},
+    {name:"Goron's Ruby", img:'gorons_ruby.png', has:p.goronsRuby, key:'goronsRuby'},
+    {name:"Zora's Sapphire", img:'zoras_sapphire.png', has:p.zorasSapphire, key:'zorasSapphire'},
   ];
   h += '<div class="quest-stones">';
   for (const st of stones) {
-    if (st.has) {
-      h += `<div class="qst" data-name="${st.name}">`;
-      h += `<img src="images/quest/${st.img}">`;
-      h += '</div>';
-    }
+    h += `<div class="qst${st.has?'':' qst-off'}" data-name="${st.name}" title="${st.name}">`;
+    h += `<img src="images/quest/${st.img}">`;
+    h += '</div>';
   }
   h += '</div>';
 
   h += '</div>';
+
+  h += buildQuestEditPanel(p, slotIdx);
+  return h;
+}
+
+function buildQuestEditPanel(p, slotIdx) {
+  const orig = slotOriginal[slotIdx];
+  const hasAgony = (p.questItems >> 21) & 1;
+  const hasGerudo = (p.questItems >> 22) & 1;
+  const heartPieces = (p.questItems >>> 28) & 0xF;
+
+  let h = `<div class="edit-panel" id="questEditPanel${slotIdx}" style="display:none">`;
+  h += '<div class="edit-panel-header"><span>Edit Quest</span>';
+  h += `<button class="edit-panel-close" onclick="event.stopPropagation();closeQuestEdit(${slotIdx})">✕</button></div>`;
+  h += '<div class="edit-panel-body">';
+
+  // Quest items
+  h += '<div class="edit-category"><div class="edit-cat-title">Quest Items</div>';
+  h += `<label class="edit-item" onclick="event.stopPropagation()"><input type="checkbox" ${hasAgony?'checked':''} onchange="setQuestBit(${slotIdx},21,this.checked?1:0)"><img class="edit-item-icon" src="images/quest/quest_stone_agony.webp"><span class="edit-item-name">Stone of Agony</span></label>`;
+  h += `<label class="edit-item" onclick="event.stopPropagation()"><input type="checkbox" ${hasGerudo?'checked':''} onchange="setQuestBit(${slotIdx},22,this.checked?1:0)"><img class="edit-item-icon" src="images/quest/quest_gerudo_card.webp"><span class="edit-item-name">Gerudo Card</span></label>`;
+  h += '</div>';
+
+  // Gold Skulltulas
+  h += '<div class="edit-category"><div class="edit-cat-title">Gold Skulltulas</div>';
+  h += `<label class="edit-item" onclick="event.stopPropagation()"><img class="edit-item-icon" src="images/quest/gold_skulltula.png"><input type="number" class="edit-ammo" min="0" max="100" value="${p.gsTokens}" onchange="setGsTokens(${slotIdx},parseInt(this.value)||0)"></label>`;
+  h += '</div>';
+
+  // Heart pieces
+  h += '<div class="edit-category"><div class="edit-cat-title">Heart Pieces</div>';
+  for (let v = 0; v < 4; v++) {
+    h += `<label class="edit-radio" onclick="event.stopPropagation()"><input type="radio" name="hp_${slotIdx}" value="${v}" ${v===heartPieces?'checked':''} onchange="setHeartPieces(${slotIdx},${v})"><span>${v === 0 ? 'None' : v + '/4'}</span></label>`;
+  }
+  h += '</div>';
+
+  // Medallions
+  const medalNames = ['Light','Forest','Fire','Water','Spirit','Shadow'];
+  const medalBits = [5,0,1,2,3,4];
+  h += '<div class="edit-category"><div class="edit-cat-title">Medallions</div>';
+  for (let m = 0; m < 6; m++) {
+    const has = (p.questItems >> medalBits[m]) & 1;
+    const origHas = orig ? (orig.questItems >> medalBits[m]) & 1 : has;
+    const isAdded = has && !origHas;
+    h += `<label class="edit-item${isAdded?' edit-added':''}" onclick="event.stopPropagation()">`;
+    h += `<input type="checkbox" ${has?'checked':''} onchange="setQuestBit(${slotIdx},${medalBits[m]},this.checked?1:0)">`;
+    h += `<img class="edit-item-icon" src="images/quest/icon_${medalNames[m].toLowerCase()}.png">`;
+    h += `<span class="edit-item-name">${medalNames[m]} Medallion</span>`;
+    if (origHas && has) h += '<span class="edit-badge edit-badge-orig">save</span>';
+    if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+    h += '</label>';
+  }
+  h += '</div>';
+
+  // Songs
+  h += '<div class="edit-category"><div class="edit-cat-title">Songs</div>';
+  for (const song of SONGS) {
+    const has = (p.questItems >> song.bit) & 1;
+    const origHas = orig ? (orig.questItems >> song.bit) & 1 : has;
+    const isAdded = has && !origHas;
+    h += `<label class="edit-item${isAdded?' edit-added':''}" onclick="event.stopPropagation()">`;
+    h += `<input type="checkbox" ${has?'checked':''} onchange="setQuestBit(${slotIdx},${song.bit},this.checked?1:0)">`;
+    h += `<img class="edit-item-icon" src="images/quest/${song.img}" style="image-rendering:pixelated">`;
+    h += `<span class="edit-item-name">${song.name}</span>`;
+    if (origHas && has) h += '<span class="edit-badge edit-badge-orig">save</span>';
+    if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+    h += '</label>';
+  }
+  h += '</div>';
+
+  // Spiritual stones
+  const stones = [
+    {name:'Kokiri Emerald', img:'kokiris_emerald.png', key:'kokiriEmerald'},
+    {name:"Goron's Ruby", img:'gorons_ruby.png', key:'goronsRuby'},
+    {name:"Zora's Sapphire", img:'zoras_sapphire.png', key:'zorasSapphire'},
+  ];
+  h += '<div class="edit-category"><div class="edit-cat-title">Spiritual Stones</div>';
+  for (const st of stones) {
+    const has = p[st.key];
+    const origHas = orig ? orig[st.key] : has;
+    const isAdded = has && !origHas;
+    h += `<label class="edit-item${isAdded?' edit-added':''}" onclick="event.stopPropagation()">`;
+    h += `<input type="checkbox" ${has?'checked':''} onchange="setStone(${slotIdx},'${st.key}',this.checked?1:0)">`;
+    h += `<img class="edit-item-icon" src="images/quest/${st.img}">`;
+    h += `<span class="edit-item-name">${st.name}</span>`;
+    if (origHas && has) h += '<span class="edit-badge edit-badge-orig">save</span>';
+    if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+    h += '</label>';
+  }
+  h += '</div>';
+
+  h += '</div></div>';
   return h;
 }
 
@@ -659,6 +850,7 @@ function buildSaveScreen(i, p) {
   h += `<input class="export-input" id="exportName${i}" value="file" placeholder="prefix" onclick="event.stopPropagation()">`;
   h += `<button class="export-btn" onclick="event.stopPropagation();exportChecked(${i})">Export .sav</button>`;
   h += `<button class="preview-btn" onclick="event.stopPropagation();previewSlot(${i})">Preview</button>`;
+  h += `<button class="reset-btn" onclick="event.stopPropagation();resetEdits(${i})">Reset</button>`;
   h += '</div>';
   h += '<span class="export-hint">Exports as prefix1.sav, prefix2.sav, etc.</span>';
   h += '</div>';
@@ -678,6 +870,7 @@ function renderSlots(be) {
     const slotData = be.slice(offset, offset + SLOT_SIZE);
     slotValidity[i] = isSlotValid(slotData);
     slotParsed[i] = slotValidity[i] ? parseSlotDisplay(slotData) : null;
+    slotOriginal[i] = slotParsed[i] ? JSON.parse(JSON.stringify(slotParsed[i])) : null;
   }
 
   for (let i = 0; i < 3; i++) {
@@ -747,9 +940,9 @@ function renderSlots(be) {
     html += '</div>';
 
     const screens = {
-      items: buildItemsScreen(p),
-      equip: buildEquipScreen(p),
-      quest: buildQuestScreen(p),
+      items: buildItemsScreen(p, i),
+      equip: buildEquipScreen(p, i),
+      quest: buildQuestScreen(p, i),
       save: buildSaveScreen(i, p),
     };
 
@@ -793,16 +986,57 @@ function initNamebarHovers() {
   });
 }
 
+function applyToggleEdits(data, slotIdx) {
+  const orig = slotOriginal[slotIdx];
+  const p = slotParsed[slotIdx];
+  if (!orig || !p) return;
+
+  const inv = data.inventory || {};
+  if (inv.items) {
+    for (let i = 0; i < Math.min(24, inv.items.length); i++) {
+      if (p.items[i] !== orig.items[i]) {
+        inv.items[i] = p.items[i];
+        if (AMMO_SLOTS.has(i) && inv.ammo) inv.ammo[i] = p.ammo[i];
+      }
+    }
+  }
+  if (p.questItems !== orig.questItems && 'questItems' in inv) {
+    inv.questItems = p.questItems;
+  }
+  if (p.gsTokens !== orig.gsTokens && 'gsTokens' in inv) {
+    inv.gsTokens = p.gsTokens;
+  }
+  if (p.equipment !== orig.equipment && 'equipment' in inv) {
+    inv.equipment = p.equipment;
+  }
+  if (p.upgrades !== orig.upgrades && 'upgrades' in inv) {
+    inv.upgrades = p.upgrades;
+  }
+  if (data.eventChkInf) {
+    if (p.kokiriEmerald !== orig.kokiriEmerald) {
+      if (p.kokiriEmerald) data.eventChkInf[0] |= (1 << 7);
+      else data.eventChkInf[0] &= ~(1 << 7);
+    }
+    if (p.goronsRuby !== orig.goronsRuby) {
+      if (p.goronsRuby) data.eventChkInf[2] |= (1 << 5);
+      else data.eventChkInf[2] &= ~(1 << 5);
+    }
+    if (p.zorasSapphire !== orig.zorasSapphire) {
+      if (p.zorasSapphire) data.eventChkInf[3] |= (1 << 7);
+      else data.eventChkInf[3] &= ~(1 << 7);
+    }
+  }
+}
+
 function applyEdits(slotIndex, json, callerSlot) {
   const nameInput = document.getElementById('editName' + callerSlot);
   const rupeesInput = document.getElementById('editRupees' + callerSlot);
   const heartsInput = document.getElementById('editHearts' + callerSlot);
   if (!nameInput) return json;
 
-  // Only apply edits to the slot that owns the edit fields
   if (slotIndex !== callerSlot) return json;
 
-  const orig = slotParsed[slotIndex];
+  const orig = slotOriginal[slotIndex];
   if (!orig) return json;
 
   const data = json.sections.base.data;
@@ -824,7 +1058,239 @@ function applyEdits(slotIndex, json, callerSlot) {
     data.health = Math.min(data.health, data.healthCapacity);
   }
 
+  applyToggleEdits(data, slotIndex);
+
   return json;
+}
+
+function downloadSohSave(filename) {
+  const json = window._upgradedSave;
+  if (!json) return;
+  const copy = JSON.parse(JSON.stringify(json));
+  applyToggleEdits(copy.sections.base.data, 0);
+  downloadJson(copy, filename);
+}
+
+// ===== TOGGLE EDITING =====
+
+function rerenderScreen(slotIdx, screenKey) {
+  const panel = document.querySelector(`.slot-panel[data-slot="${slotIdx}"]`);
+  if (!panel) return;
+  const screen = panel.querySelector(`.pause-screen[data-screen="${screenKey}"]`);
+  if (!screen) return;
+  const content = screen.querySelector('.pause-content');
+  if (!content) return;
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+
+  if (screenKey === 'items') content.innerHTML = buildItemsScreen(p, slotIdx);
+  else if (screenKey === 'equip') content.innerHTML = buildEquipScreen(p, slotIdx);
+  else if (screenKey === 'quest') content.innerHTML = buildQuestScreen(p, slotIdx);
+  initNamebarHovers();
+}
+
+function updateSummary(slotIdx) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  const panel = document.querySelector(`.slot-panel[data-slot="${slotIdx}"]`);
+  if (!panel) return;
+  const summary = panel.querySelector('.slot-summary');
+  if (!summary) return;
+  summary.innerHTML = `<div class="slot-stats">
+    <div class="stat"><img src="images/ui/rupee.png">${p.rupees}</div>
+    <div class="stat"><img src="images/ui/skull.png">${p.deaths}</div>
+    <div class="stat"><img src="images/quest/gold_skulltula.png">${p.gsTokens}</div>
+  </div>
+  <div class="slot-hearts">${buildHeartsHtml(p)}<div class="slot-quest">${buildQuestHtml(p)}</div></div>`;
+}
+
+function toggleItem(slotIdx, itemSlot) {
+  const p = slotParsed[slotIdx];
+  const orig = slotOriginal[slotIdx];
+  if (!p || !orig) return;
+
+  if (p.items[itemSlot] === 255) {
+    if (orig.items[itemSlot] !== 255) {
+      p.items[itemSlot] = orig.items[itemSlot];
+      if (AMMO_SLOTS.has(itemSlot)) p.ammo[itemSlot] = orig.ammo[itemSlot];
+    } else {
+      p.items[itemSlot] = SLOT_DEFAULTS[itemSlot];
+      if (AMMO_SLOTS.has(itemSlot)) p.ammo[itemSlot] = SLOT_DEFAULT_AMMO[itemSlot] || 0;
+    }
+  } else {
+    p.items[itemSlot] = 255;
+    if (AMMO_SLOTS.has(itemSlot)) p.ammo[itemSlot] = 0;
+  }
+  rerenderScreen(slotIdx, 'items');
+}
+
+function setQuestBit(slotIdx, bit, value) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  if (value) p.questItems |= (1 << bit);
+  else p.questItems &= ~(1 << bit);
+  rerenderScreen(slotIdx, 'quest');
+  openQuestEdit(slotIdx);
+  updateSummary(slotIdx);
+}
+
+function setGsTokens(slotIdx, value) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  p.gsTokens = Math.max(0, Math.min(100, value));
+  rerenderScreen(slotIdx, 'quest');
+  openQuestEdit(slotIdx);
+}
+
+function setHeartPieces(slotIdx, value) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  p.questItems = ((p.questItems & 0x0FFFFFFF) | ((value & 0xF) << 28)) >>> 0;
+  rerenderScreen(slotIdx, 'quest');
+  openQuestEdit(slotIdx);
+}
+
+function openEquipEdit(slotIdx) {
+  const panel = document.getElementById('equipEditPanel' + slotIdx);
+  if (panel) panel.style.display = 'flex';
+}
+
+function closeEquipEdit(slotIdx) {
+  const panel = document.getElementById('equipEditPanel' + slotIdx);
+  if (panel) panel.style.display = 'none';
+}
+
+function toggleEquipItem(slotIdx, bit) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  p.equipment ^= (1 << bit);
+  rerenderScreen(slotIdx, 'equip');
+  openEquipEdit(slotIdx);
+}
+
+function setUpgrade(slotIdx, shift, val) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  const def = UPGRADE_DEFS.find(u => u.shift === shift);
+  const mask = def ? def.mask : 7;
+  p.upgrades = (p.upgrades & ~(mask << shift)) | (val << shift);
+  rerenderScreen(slotIdx, 'equip');
+  openEquipEdit(slotIdx);
+}
+
+// ===== ITEMS EDIT PANEL =====
+
+function buildItemsEditPanel(p, slotIdx) {
+  const orig = slotOriginal[slotIdx];
+  let h = `<div class="edit-panel" id="itemsEditPanel${slotIdx}" style="display:none">`;
+  h += '<div class="edit-panel-header"><span>Edit Items</span>';
+  h += `<button class="edit-panel-close" onclick="event.stopPropagation();closeItemsEdit(${slotIdx})">✕</button></div>`;
+  h += '<div class="edit-panel-body">';
+
+  for (let j = 0; j < 24; j++) {
+    const itemId = p.items[j];
+    const origId = orig ? orig.items[j] : itemId;
+    const options = SLOT_ITEMS[j];
+    const hasItem = itemId !== 255;
+    const isAdded = hasItem && origId === 255;
+
+    h += `<div class="edit-item${isAdded ? ' edit-added' : ''}" onclick="event.stopPropagation()">`;
+
+    if (options.length === 1) {
+      const name = ITEM_NAMES[options[0]];
+      const img = ITEM_IMAGES[options[0]];
+      h += `<input type="checkbox" ${hasItem ? 'checked' : ''} onchange="setItem(${slotIdx},${j},this.checked?${options[0]}:255)">`;
+      if (img) h += `<img class="edit-item-icon" src="images/items/${img}.png">`;
+      h += `<span class="edit-item-name">${name}</span>`;
+      if (AMMO_SLOTS.has(j)) {
+        h += `<input type="number" class="edit-ammo" min="0" max="99" value="${p.ammo[j] || 0}" onchange="setAmmo(${slotIdx},${j},parseInt(this.value)||0)">`;
+      }
+    } else {
+      h += `<select class="edit-select" onchange="setItem(${slotIdx},${j},parseInt(this.value))">`;
+      h += `<option value="255"${!hasItem?' selected':''}>— ${SLOT_LABELS[j]} —</option>`;
+      for (const opt of options) {
+        h += `<option value="${opt}"${itemId===opt?' selected':''}>${ITEM_NAMES[opt]}</option>`;
+      }
+      h += '</select>';
+      if (hasItem && ITEM_IMAGES[itemId]) {
+        h += `<img class="edit-item-icon" src="images/items/${ITEM_IMAGES[itemId]}.png">`;
+      }
+    }
+
+    if (origId !== 255 && hasItem && origId === itemId) h += '<span class="edit-badge edit-badge-orig">save</span>';
+    if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
+
+    h += '</div>';
+  }
+
+  h += '</div></div>';
+  return h;
+}
+
+function openItemsEdit(slotIdx) {
+  const panel = document.getElementById('itemsEditPanel' + slotIdx);
+  if (panel) panel.style.display = 'flex';
+}
+
+function closeItemsEdit(slotIdx) {
+  const panel = document.getElementById('itemsEditPanel' + slotIdx);
+  if (panel) panel.style.display = 'none';
+}
+
+function setItem(slotIdx, slot, itemId) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  p.items[slot] = itemId;
+  if (itemId === 255 && AMMO_SLOTS.has(slot)) p.ammo[slot] = 0;
+  if (itemId !== 255 && AMMO_SLOTS.has(slot) && p.ammo[slot] === 0) {
+    p.ammo[slot] = SLOT_DEFAULT_AMMO[slot] || 0;
+  }
+  rerenderScreen(slotIdx, 'items');
+  openItemsEdit(slotIdx);
+}
+
+function setAmmo(slotIdx, slot, amount) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  p.ammo[slot] = Math.max(0, Math.min(99, amount));
+}
+
+function setStone(slotIdx, key, value) {
+  const p = slotParsed[slotIdx];
+  if (!p) return;
+  p[key] = value ? 1 : 0;
+  rerenderScreen(slotIdx, 'quest');
+  openQuestEdit(slotIdx);
+  updateSummary(slotIdx);
+}
+
+function openQuestEdit(slotIdx) {
+  const panel = document.getElementById('questEditPanel' + slotIdx);
+  if (panel) panel.style.display = 'flex';
+}
+
+function closeQuestEdit(slotIdx) {
+  const panel = document.getElementById('questEditPanel' + slotIdx);
+  if (panel) panel.style.display = 'none';
+}
+
+function resetEdits(slotIdx) {
+  const orig = slotOriginal[slotIdx];
+  if (!orig) return;
+  slotParsed[slotIdx] = JSON.parse(JSON.stringify(orig));
+
+  const p = slotParsed[slotIdx];
+  const nameInput = document.getElementById('editName' + slotIdx);
+  const rupeesInput = document.getElementById('editRupees' + slotIdx);
+  const heartsInput = document.getElementById('editHearts' + slotIdx);
+  if (nameInput) nameInput.value = p.name;
+  if (rupeesInput) rupeesInput.value = p.rupees;
+  if (heartsInput) heartsInput.value = Math.floor(p.healthCapacity / 16);
+
+  rerenderScreen(slotIdx, 'items');
+  rerenderScreen(slotIdx, 'equip');
+  rerenderScreen(slotIdx, 'quest');
+  updateSummary(slotIdx);
 }
 
 function downloadJson(json, filename) {
@@ -1029,6 +1495,9 @@ function showFileInfo(info) {
 }
 
 function handleBinary(raw, filename) {
+  slotParsed = [null, null, null];
+  slotOriginal = [null, null, null];
+  slotValidity = [false, false, false];
   let data = raw;
   if (raw.length < 0x3D10) {
     showError(`File too small (${formatSize(raw.length)}). Need at least 15,632 bytes for 3 save slots.`);
@@ -1072,6 +1541,9 @@ function handleBinary(raw, filename) {
 }
 
 function handleJson(text, filename) {
+  slotParsed = [null, null, null];
+  slotOriginal = [null, null, null];
+  slotValidity = [false, false, false];
   try {
     const json = JSON.parse(text);
 

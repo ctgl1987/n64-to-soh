@@ -108,6 +108,8 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 .item-cell{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
 .item-cell.empty{opacity:.15}
 .item-cell.has-item{}
+.item-cell.toggled-off{opacity:.25}
+.item-cell.toggled-off:hover{opacity:.4}
 .item-icon{width:70%;height:70%;object-fit:contain;image-rendering:pixelated}
 .item-icon-empty{width:70%;height:70%}
 .item-ammo{position:absolute;bottom:2px;left:4px;color:var(--gold);font-weight:700;
@@ -133,9 +135,10 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 
 /* Top-left: quest items (2x2 grid) */
 .quest-items-area{position:absolute;top:2px;left:1px;display:grid;grid-template-columns:50px 50px;grid-template-rows:50px 50px;gap:12px}
-.qi-cell{display:flex;align-items:center;justify-content:center;padding:4px}
+.qi-cell{display:flex;align-items:center;justify-content:center;padding:4px;cursor:pointer}
 .qi-img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
 .qi-off{opacity:.15;filter:grayscale(1)}
+.qi-off:hover{opacity:.3}
 .qi-skull-img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
 .qi-skull-count{font-family:var(--font-display);font-size:1.1rem;color:#fff;text-shadow:2px 2px 2px rgba(0,0,0,.9);margin-right:10px}
 
@@ -146,7 +149,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 
 /* Top-right: medallions hexagon */
 .quest-medallions{position:absolute;top:0;right:3px;width:194px;height:233px}
-.qm{position:absolute;width:45px;height:45px}
+.qm{position:absolute;width:45px;height:45px;cursor:pointer}
 .qm img{width:100%;height:100%;image-rendering:pixelated}
 .qm-light{left:75px;top:12px}
 .qm-forest{left:139px;top:55px}
@@ -157,14 +160,16 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 
 /* Bottom-left: songs */
 .quest-songs{position:absolute;top:140px;left:10px;display:grid;grid-template-columns:repeat(6,29px);grid-template-rows:46px 46px;gap:4px 13px}
-.qs{display:flex;align-items:center;justify-content:center;width:28px;height:46px}
+.qs{display:flex;align-items:center;justify-content:center;width:28px;height:46px;cursor:pointer}
 .qs.qs-on{opacity:1}
 .qs-note{width:28px;height:auto;image-rendering:pixelated;filter:drop-shadow(2px 2px 1px rgba(0,0,0,.7))}
 
 /* Bottom-right: stones */
 .quest-stones{position:absolute;bottom:12px;right:24px;display:flex;gap:22px;align-items:center}
-.qst{width:36px;height:36px}
+.qst{width:36px;height:36px;cursor:pointer}
 .qst img{width:100%;height:100%;image-rendering:pixelated}
+.qst-off{opacity:.15;filter:grayscale(1)}
+.qst-off:hover{opacity:.3}
 
 /* Name bar at bottom of pause screen */
 .pause-namebar{position:relative;width:256px;height:40px;margin:-20px auto 0;
@@ -206,6 +211,8 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 .export-btn:hover{filter:brightness(1.1)}
 .preview-btn{background:rgba(255,255,255,.1);color:var(--text);border:1px solid rgba(255,255,255,.2);padding:.45rem 1rem;cursor:pointer;font-size:.85rem;font-family:var(--font-display)}
 .preview-btn:hover{background:rgba(255,255,255,.15)}
+.reset-btn{background:rgba(193,68,62,.2);color:#E5A0A0;border:1px solid rgba(193,68,62,.4);padding:.45rem 1rem;cursor:pointer;font-size:.85rem;font-family:var(--font-display)}
+.reset-btn:hover{background:rgba(193,68,62,.35)}
 .export-input{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);color:var(--text);padding:.4rem .6rem;font-size:.85rem;width:100px}
 .export-input:focus{outline:none;border-color:var(--gold-dim)}
 .export-hint{font-size:.7rem;color:var(--text-dim);display:block;margin-top:.3rem}
@@ -230,6 +237,49 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 .upgrade-changes li{margin-bottom:.3rem}
 .upgrade-info{font-size:.9rem;color:var(--text-dim);margin-bottom:1rem}
 .upgrade-actions{display:flex;gap:.75rem}
+
+/* Edit toggle button */
+.edit-toggle-btn{position:absolute;top:8px;right:8px;z-index:10;background:rgba(0,0,0,.5);border:1px solid var(--gold-dim);
+  color:var(--gold);font-size:1.1rem;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  line-height:1;padding:0;border-radius:3px}
+.edit-toggle-btn:hover{background:rgba(200,168,78,.2);border-color:var(--gold)}
+
+/* Edit panel overlay */
+.edit-panel{position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;
+  background:rgba(8,12,22,.95);flex-direction:column;overflow:hidden;border:1px solid var(--gold-dim)}
+.edit-panel-header{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;
+  border-bottom:1px solid var(--border);font-family:var(--font-display);font-size:.95rem;color:var(--gold)}
+.edit-panel-close{background:none;border:none;color:var(--text-dim);font-size:1.2rem;cursor:pointer;padding:0 4px}
+.edit-panel-close:hover{color:var(--text)}
+.edit-panel-body{flex:1;overflow-y:auto;padding:.5rem .75rem}
+.edit-category{margin-bottom:.6rem}
+.edit-cat-title{font-family:var(--font-display);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--gold-dim);margin-bottom:.25rem;border-bottom:1px solid var(--border);padding-bottom:.15rem}
+.edit-item{display:flex;align-items:center;gap:.4rem;padding:.2rem .3rem;cursor:pointer;font-size:.8rem;color:var(--text);border-radius:2px}
+.edit-item:hover{background:rgba(255,255,255,.05)}
+.edit-item input[type="checkbox"]{accent-color:var(--gold);margin:0}
+.edit-item-icon{width:24px;height:24px;image-rendering:pixelated;object-fit:contain}
+.edit-item-name{flex:1}
+.edit-radio{display:flex;align-items:center;gap:.4rem;padding:.15rem .3rem;cursor:pointer;font-size:.75rem;color:var(--text)}
+.edit-radio:hover{background:rgba(255,255,255,.05)}
+.edit-radio input[type="radio"]{accent-color:var(--gold);margin:0}
+.edit-badge{font-size:.6rem;padding:1px 5px;border-radius:2px;text-transform:uppercase;letter-spacing:.03em}
+.edit-badge-orig{background:rgba(78,138,193,.2);color:var(--blue)}
+.edit-badge-new{background:rgba(76,175,80,.2);color:var(--green)}
+.edit-added{background:rgba(76,175,80,.06)}
+
+/* Added item/equipment indicator in pause screen */
+.eq-added,.item-added{position:relative}
+.eq-added::before,.item-added::before{content:'';position:absolute;top:2px;right:2px;width:6px;height:6px;
+  background:var(--green);border-radius:50%;z-index:5;box-shadow:0 0 4px var(--green)}
+
+/* Edit panel: select & ammo inputs */
+.edit-select{background:rgba(0,0,0,.4);border:1px solid var(--border);color:var(--text);font-size:.75rem;
+  padding:.2rem .3rem;flex:1;min-width:0;font-family:inherit}
+.edit-select:focus{outline:none;border-color:var(--gold-dim)}
+.edit-ammo{background:rgba(0,0,0,.4);border:1px solid var(--border);color:var(--gold);font-size:.75rem;
+  padding:.2rem .3rem;width:42px;text-align:center;font-variant-numeric:tabular-nums}
+.edit-ammo:focus{outline:none;border-color:var(--gold-dim)}
 
 /* Item color coding */
 .ic-blue{background:rgba(50,80,160,.4)}
