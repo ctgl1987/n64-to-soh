@@ -30,6 +30,8 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
 .page-header{text-align:center;margin-bottom:2rem}
 .page-header h1{font-family:var(--font-display);font-size:2rem;color:var(--gold);letter-spacing:.02em;margin-bottom:.25rem}
 .page-header p{color:var(--text-dim);font-size:.875rem}
+.repo-link{color:var(--gold-dim);font-size:.75rem;text-decoration:none;letter-spacing:.03em}
+.repo-link:hover{color:var(--gold)}
 
 .drop-zone{border:2px dashed var(--gold-dim);border-radius:8px;padding:3rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:2rem}
 .drop-zone:hover,.drop-zone.dragover{border-color:var(--gold);background:rgba(200,168,78,.05)}
@@ -240,6 +242,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;lin
   <div class="page-header">
     <h1>N64 → SoH Save Converter</h1>
     <p>N64 .sra → SoH .sav  ·  SoH save version upgrade</p>
+    <a class="repo-link" href="https://github.com/ctgl1987/n64-to-soh" target="_blank">GitHub</a>
   </div>
   <div id="error" class="error-msg" style="display:none"></div>
   <div id="dropZone" class="drop-zone">
