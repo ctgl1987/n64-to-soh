@@ -71,7 +71,7 @@ input,select,button,textarea{font-family:inherit}
 .slot-panel.visible{display:block}
 
 /* Summary with file_details bg */
-.slot-summary-bg{background:url('images/backgrounds/file_details.png') no-repeat;background-size:100% 100%;
+.slot-summary-bg{background:url('images/backgrounds/file_details.webp') no-repeat;background-size:100% 100%;
   image-rendering:pixelated;padding:1rem 1.25rem;border-radius:0;margin-bottom:.5rem}
 .slot-summary{display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap}
 .slot-stats{display:flex;flex-direction:column;gap:.3rem;min-width:90px}
@@ -91,11 +91,11 @@ input,select,button,textarea{font-family:inherit}
 .pause-tabs{display:flex;gap:2px;margin-bottom:2px}
 .pause-tab{flex:1;padding:6px 0;text-align:center;font-size:1.25rem;
   letter-spacing:.04em;cursor:pointer;
-  background:url('images/backgrounds/tab_bg.png') no-repeat center/100% 100%;color:#666;
+  background:url('images/backgrounds/tab_bg.webp') no-repeat center/100% 100%;color:#666;
   border:none;transition:all .15s;
   text-shadow:2px 2px 2px rgba(0,0,0,.9);border-radius:0;image-rendering:pixelated}
 .pause-tab:hover{color:#999}
-.pause-tab.active{color:var(--gold);background:url('images/backgrounds/tab_active.png') no-repeat center/100% 100%;image-rendering:pixelated}
+.pause-tab.active{color:var(--gold);background:url('images/backgrounds/tab_active.webp') no-repeat center/100% 100%;image-rendering:pixelated}
 
 .pause-screen{display:none;border-radius:0;overflow:visible;position:relative}
 .pause-screen.visible{display:block}
@@ -127,9 +127,9 @@ input,select,button,textarea{font-family:inherit}
 .eq-cell{position:relative;display:flex;align-items:center;justify-content:center}
 .eq-cell.eq-empty{}
 .eq-cell.eq-owned{opacity:.6}
-.eq-cell.eq-equipped{background:url('images/ui/cursor_white.png') no-repeat center/contain;image-rendering:pixelated}
+.eq-cell.eq-equipped{background:url('images/ui/cursor_white.webp') no-repeat center/contain;image-rendering:pixelated}
 .eq-cell::after,.item-cell::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
-  background:url('images/ui/cursor_yellow.png') no-repeat center/contain;image-rendering:pixelated;
+  background:url('images/ui/cursor_yellow.webp') no-repeat center/contain;image-rendering:pixelated;
   opacity:0;pointer-events:none;z-index:2}
 .eq-cell:hover::after,.item-cell:hover::after{opacity:1}
 .eq-icon{width:70%;height:70%;object-fit:contain;image-rendering:pixelated}
@@ -177,7 +177,7 @@ input,select,button,textarea{font-family:inherit}
 
 /* Name bar at bottom of pause screen */
 .pause-namebar{position:relative;width:256px;height:40px;margin:4px auto 0;
-  z-index:3;background:url('images/backgrounds/namebar.png') no-repeat center/100% 100%;image-rendering:pixelated;
+  z-index:3;background:url('images/backgrounds/namebar.webp') no-repeat center/100% 100%;image-rendering:pixelated;
   border-top:2px solid #787878;border-left:2px solid #787878;
   border-bottom:2px solid #383838;border-right:2px solid #383838;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.2);
@@ -318,6 +318,14 @@ input,select,button,textarea{font-family:inherit}
 .edit-ammo:focus{outline:none;border-color:var(--gold-dim)}
 
 /* Item color coding */
+/* Cold-cache placeholders: icons hold a tinted block until their bitmap arrives,
+   so the pause screens keep their layout instead of flashing an empty grid.
+   converter.js adds .img-loaded on load, which clears the tint. */
+.item-icon,.eq-icon,.quest-icon,.qi-img,.qi-skull-img,.edit-item-icon,.stat img,.qhp img{
+  background-color:rgba(200,168,78,.13);transition:background-color .25s ease}
+.pause-bg{background-color:var(--panel-hi)}
+img.img-loaded{background-color:transparent}
+
 .ic-blue{background:rgba(50,80,160,.4)}
 .ic-green{background:rgba(50,140,60,.4)}
 .ic-red{background:rgba(160,50,50,.4)}

@@ -14,6 +14,9 @@ const CHANGELOG = [
       'Fall back to scanning for the save magic when the container layout is unknown.',
       'Show the detected container in the file info panel.',
       'Clearer error when the file is an EEPROM or FlashRAM save from a different game.',
+      'Much faster first load: artwork is down from 1.5&nbsp;MB to 0.5&nbsp;MB. The spiritual stones were 600&nbsp;px images shown at 32&nbsp;px, and the pause backgrounds were poorly encoded PNGs.',
+      'Icons now hold a tinted placeholder while they load, so the pause screens keep their layout instead of flashing an empty grid.',
+      'Artwork preloads while the page sits idle, so the first save renders instantly.',
     ],
   },
   {
@@ -117,18 +120,18 @@ const SLOT_ITEMS = [
 ];
 
 const SONGS = [
-  {name:"Zelda's Lullaby", bit:12, img:'note_white.png'},
-  {name:"Epona's Song", bit:13, img:'note_white.png'},
-  {name:"Saria's Song", bit:14, img:'note_white.png'},
-  {name:"Sun's Song", bit:15, img:'note_white.png'},
-  {name:'Song of Time', bit:16, img:'note_white.png'},
-  {name:'Song of Storms', bit:17, img:'note_white.png'},
-  {name:'Minuet of Forest', bit:6, img:'note_green.png'},
-  {name:'Bolero of Fire', bit:7, img:'note_red.png'},
-  {name:'Serenade of Water', bit:8, img:'note_blue.png'},
-  {name:'Requiem of Spirit', bit:9, img:'note_orange.png'},
-  {name:'Nocturne of Shadow', bit:10, img:'note_purple.png'},
-  {name:'Prelude of Light', bit:11, img:'note_yellow.png'},
+  {name:"Zelda's Lullaby", bit:12, img:'note_white.webp'},
+  {name:"Epona's Song", bit:13, img:'note_white.webp'},
+  {name:"Saria's Song", bit:14, img:'note_white.webp'},
+  {name:"Sun's Song", bit:15, img:'note_white.webp'},
+  {name:'Song of Time', bit:16, img:'note_white.webp'},
+  {name:'Song of Storms', bit:17, img:'note_white.webp'},
+  {name:'Minuet of Forest', bit:6, img:'note_green.webp'},
+  {name:'Bolero of Fire', bit:7, img:'note_red.webp'},
+  {name:'Serenade of Water', bit:8, img:'note_blue.webp'},
+  {name:'Requiem of Spirit', bit:9, img:'note_orange.webp'},
+  {name:'Nocturne of Shadow', bit:10, img:'note_purple.webp'},
+  {name:'Prelude of Light', bit:11, img:'note_yellow.webp'},
 ];
 
 const EQUIP_CATS = [
@@ -405,7 +408,7 @@ function renderSohSlot(data, filename, result) {
   let html = '';
 
   // Slot bar
-  html += `<div class="slot-bar active" style="background-image:url('images/backgrounds/file1.png')">`;
+  html += `<div class="slot-bar active" style="background-image:url('images/backgrounds/file1.webp')">`;
   html += `<span class="slot-file-label">File</span>`;
   html += `<div class="slot-bar-content"><span class="slot-name">${p.name}</span><span class="slot-badge">${age}</span></div>`;
   html += '</div>';
@@ -422,9 +425,9 @@ function renderSohSlot(data, filename, result) {
   // Summary
   html += `<div class="slot-summary-bg"><div class="slot-summary">`;
   html += `<div class="slot-stats">
-    <div class="stat"><img src="images/ui/rupee.png">${p.rupees}</div>
-    <div class="stat"><img src="images/ui/skull.png">${p.deaths}</div>
-    <div class="stat"><img src="images/quest/gold_skulltula.png">${p.gsTokens}</div>
+    <div class="stat"><img src="images/ui/rupee.webp">${p.rupees}</div>
+    <div class="stat"><img src="images/ui/skull.webp">${p.deaths}</div>
+    <div class="stat"><img src="images/quest/gold_skulltula.webp">${p.gsTokens}</div>
   </div>`;
   html += `<div class="slot-hearts">${buildHeartsHtml(p)}<div class="slot-quest">${buildQuestHtml(p)}</div></div>`;
   html += '</div></div>';
@@ -564,10 +567,10 @@ const EQUIP_IMAGES = [
 ];
 
 const PAUSE_TABS = [
-  {key:'items', label:'Items', bg:'backgrounds/pause_items.png'},
-  {key:'equip', label:'Equipment', bg:'backgrounds/pause_equip.png'},
-  {key:'quest', label:'Quest', bg:'backgrounds/pause_quest.png'},
-  {key:'save', label:'Save', bg:'backgrounds/pause_save.png'},
+  {key:'items', label:'Items', bg:'backgrounds/pause_items.webp'},
+  {key:'equip', label:'Equipment', bg:'backgrounds/pause_equip.webp'},
+  {key:'quest', label:'Quest', bg:'backgrounds/pause_quest.webp'},
+  {key:'save', label:'Save', bg:'backgrounds/pause_save.webp'},
 ];
 
 // ===== UI RENDERING =====
@@ -599,16 +602,16 @@ function toggleSlot(slotIdx) {
 
 function buildHeartsHtml(p) {
   const heartContainers = Math.max(3, Math.floor(p.healthCapacity / 16));
-  const heartImg = p.defenseHearts > 0 ? 'icon_heart_defense.png' : 'icon_heart.png';
+  const heartImg = p.defenseHearts > 0 ? 'icon_heart_defense.webp' : 'icon_heart.webp';
   const heartsTop = Math.min(heartContainers, 10);
   const heartsBot = Math.max(0, heartContainers - 10);
 
   let h = '<div class="hearts-row">';
   for (let i = 0; i < heartsTop; i++) h += `<img src="images/ui/${heartImg}" alt="♥">`;
-  for (let i = 0; i < 10 - heartsTop; i++) h += `<img src="images/ui/icon_heart.png" class="empty-heart" alt="♡">`;
+  for (let i = 0; i < 10 - heartsTop; i++) h += `<img src="images/ui/icon_heart.webp" class="empty-heart" alt="♡">`;
   h += '</div><div class="hearts-row">';
   for (let i = 0; i < heartsBot; i++) h += `<img src="images/ui/${heartImg}" alt="♥">`;
-  for (let i = 0; i < 10 - heartsBot; i++) h += `<img src="images/ui/icon_heart.png" class="empty-heart" alt="♡">`;
+  for (let i = 0; i < 10 - heartsBot; i++) h += `<img src="images/ui/icon_heart.webp" class="empty-heart" alt="♡">`;
   h += '</div>';
   return h;
 }
@@ -616,9 +619,9 @@ function buildHeartsHtml(p) {
 function buildQuestHtml(p) {
   let h = '';
   const stones = [
-    {name:"Kokiri's Emerald", img:'kokiris_emerald.png', has:p.kokiriEmerald},
-    {name:"Goron's Ruby", img:'gorons_ruby.png', has:p.goronsRuby},
-    {name:"Zora's Sapphire", img:'zoras_sapphire.png', has:p.zorasSapphire},
+    {name:"Kokiri's Emerald", img:'kokiris_emerald.webp', has:p.kokiriEmerald},
+    {name:"Goron's Ruby", img:'gorons_ruby.webp', has:p.goronsRuby},
+    {name:"Zora's Sapphire", img:'zoras_sapphire.webp', has:p.zorasSapphire},
   ];
   for (const st of stones) {
     h += `<img class="quest-icon${st.has?'':' off'}" src="images/quest/${st.img}" title="${st.name}">`;
@@ -626,7 +629,7 @@ function buildQuestHtml(p) {
   const medalNames = ['forest','fire','water','spirit','shadow','light'];
   for (let m = 0; m < 6; m++) {
     const has = (p.questItems >> m) & 1;
-    h += `<img class="quest-icon${has?'':' off'}" src="images/quest/icon_${medalNames[m]}.png" title="${medalNames[m][0].toUpperCase()+medalNames[m].slice(1)} Medallion">`;
+    h += `<img class="quest-icon${has?'':' off'}" src="images/quest/icon_${medalNames[m]}.webp" title="${medalNames[m][0].toUpperCase()+medalNames[m].slice(1)} Medallion">`;
   }
   return h;
 }
@@ -651,7 +654,7 @@ function buildItemsScreen(p, slotIdx) {
       const name = ITEM_NAMES[origId] || `Item(${origId})`;
       const img = ITEM_IMAGES[origId];
       h += `<div class="item-cell has-item toggled-off" data-name="${name} (removed)" title="${name} (removed)">`;
-      if (img) h += `<img class="item-icon" src="images/items/${img}.png" alt="${name}">`;
+      if (img) h += `<img class="item-icon" src="images/items/${img}.webp" alt="${name}">`;
       else h += `<div class="item-icon-empty"></div>`;
       h += '</div>';
     } else if (itemId === 255) {
@@ -661,7 +664,7 @@ function buildItemsScreen(p, slotIdx) {
       const img = ITEM_IMAGES[itemId];
       const ammo = AMMO_SLOTS.has(j) && p.ammo[j] > 0 ? `<span class="item-ammo">${p.ammo[j]}</span>` : '';
       h += `<div class="item-cell has-item${isAdded || isChanged || ammoChanged?' item-added':''}" data-name="${name}" title="${name}">`;
-      if (img) h += `<img class="item-icon" src="images/items/${img}.png" alt="${name}">`;
+      if (img) h += `<img class="item-icon" src="images/items/${img}.webp" alt="${name}">`;
       else h += `<div class="item-icon-empty"></div>`;
       h += `${ammo}</div>`;
     }
@@ -682,12 +685,12 @@ function buildEquipScreen(p, slotIdx) {
       const added = val !== origVal;
       const label = val < up.vals.length ? up.vals[val] : `${up.name} (${val})`;
       const imgKey = up.imgKey;
-      if (imgKey && val < up.vals.length) upgs.push({title:label, img:`upg_${imgKey}${val}.png`, added});
+      if (imgKey && val < up.vals.length) upgs.push({title:label, img:`upg_${imgKey}${val}.webp`, added});
       else upgs.push({title:label, text:label, added});
     }
   }
   if (p.isMagicAcquired) {
-    upgs.push({title:`Magic: ${p.magic} / ${p.magicLevel === 2 ? 96 : 48}`, img:'upg_scale1.png', isMagic:true, added:false});
+    upgs.push({title:`Magic: ${p.magic} / ${p.magicLevel === 2 ? 96 : 48}`, img:'upg_scale1.webp', isMagic:true, added:false});
   }
 
   let h = '<div class="screen-actions">';
@@ -703,7 +706,7 @@ function buildEquipScreen(p, slotIdx) {
       const u = upgs[row];
       h += `<div class="eq-cell eq-owned${u.added?' eq-added':''}" data-name="${u.title}" title="${u.title}">`;
       if (u.img && !u.isMagic) h += `<img class="eq-icon" src="images/upgrades/${u.img}" alt="${u.title}">`;
-      else if (u.isMagic) h += `<img class="eq-icon" src="images/upgrades/upg_scale1.png" alt="Magic" style="filter:hue-rotate(200deg)">`;
+      else if (u.isMagic) h += `<img class="eq-icon" src="images/upgrades/upg_scale1.webp" alt="Magic" style="filter:hue-rotate(200deg)">`;
       else h += `<span class="upg-text">${u.text}</span>`;
       h += '</div>';
     } else {
@@ -728,7 +731,7 @@ function buildEquipScreen(p, slotIdx) {
       const cls = isEquipped ? 'eq-equipped' : owned ? 'eq-owned' : 'eq-empty';
       const img = EQUIP_IMAGES[row][j];
       h += `<div class="eq-cell ${cls}${isAdded?' eq-added':''}" data-name="${cat.items[j]}" title="${cat.items[j]}">`;
-      if (owned) h += `<img class="eq-icon" src="images/equipment/${img}.png" alt="${cat.items[j]}">`;
+      if (owned) h += `<img class="eq-icon" src="images/equipment/${img}.webp" alt="${cat.items[j]}">`;
       h += '</div>';
     }
   }
@@ -761,7 +764,7 @@ function buildEquipEditPanel(p, slotIdx) {
       const img = EQUIP_IMAGES[row][j];
       h += `<label class="edit-item${isAdded ? ' edit-added' : ''}${isRemoved ? ' edit-removed' : ''}" onclick="event.stopPropagation()">`;
       h += `<input type="checkbox" ${owned ? 'checked' : ''} onchange="toggleEquipItem(${slotIdx},${cat.bits[j]})">`;
-      h += `<img class="edit-item-icon" src="images/equipment/${img}.png">`;
+      h += `<img class="edit-item-icon" src="images/equipment/${img}.webp">`;
       h += `<span class="edit-item-name">${cat.items[j]}</span>`;
       if (wasOriginal && owned) h += '<span class="edit-badge edit-badge-orig">save</span>';
       if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
@@ -809,16 +812,16 @@ function buildQuestScreen(p, slotIdx) {
   h += '<div class="quest-items-area">';
   h += `<div class="qi-cell${hasAgony?'':' qi-off'}" data-name="Stone of Agony" title="Stone of Agony"><img class="qi-img" src="images/quest/quest_stone_agony.webp"></div>`;
   h += `<div class="qi-cell${hasGerudo?'':' qi-off'}" data-name="Gerudo Card" title="Gerudo Card"><img class="qi-img" src="images/quest/quest_gerudo_card.webp"></div>`;
-  h += `<div class="qi-cell" data-name="Gold Skulltulas: ${p.gsTokens}" title="Gold Skulltulas: ${p.gsTokens}"><img class="qi-skull-img" src="images/quest/gold_skulltula.png"></div>`;
+  h += `<div class="qi-cell" data-name="Gold Skulltulas: ${p.gsTokens}" title="Gold Skulltulas: ${p.gsTokens}"><img class="qi-skull-img" src="images/quest/gold_skulltula.webp"></div>`;
   h += `<div class="qi-cell qi-count" data-name="Gold Skulltulas: ${p.gsTokens}" title="Gold Skulltulas: ${p.gsTokens}"><span class="qi-skull-count">${p.gsTokens}</span></div>`;
   h += '</div>';
 
   // === Heart pieces (2x2 grid) ===
   h += '<div class="quest-hearts-area">';
-  h += `<div class="qhp${heartPieces>=1?'':' qi-off'}" data-name="Heart Piece 1/4" title="Heart Piece 1/4"><img src="images/quest/h_tl.png"></div>`;
+  h += `<div class="qhp${heartPieces>=1?'':' qi-off'}" data-name="Heart Piece 1/4" title="Heart Piece 1/4"><img src="images/quest/h_tl.webp"></div>`;
   h += '<div class="qhp qi-off"></div>';
-  h += `<div class="qhp${heartPieces>=2?'':' qi-off'}" data-name="Heart Piece 2/4" title="Heart Piece 2/4"><img src="images/quest/h_bl.png"></div>`;
-  h += `<div class="qhp${heartPieces>=3?'':' qi-off'}" data-name="Heart Piece 3/4" title="Heart Piece 3/4"><img src="images/quest/h_br.png"></div>`;
+  h += `<div class="qhp${heartPieces>=2?'':' qi-off'}" data-name="Heart Piece 2/4" title="Heart Piece 2/4"><img src="images/quest/h_bl.webp"></div>`;
+  h += `<div class="qhp${heartPieces>=3?'':' qi-off'}" data-name="Heart Piece 3/4" title="Heart Piece 3/4"><img src="images/quest/h_br.webp"></div>`;
   h += '</div>';
 
   // === Top-right: medallions ===
@@ -829,7 +832,7 @@ function buildQuestScreen(p, slotIdx) {
   for (let m = 0; m < 6; m++) {
     const has = (p.questItems >> medalBits[m]) & 1;
     h += `<div class="qm qm-${medalNames[m]}${has?'':' qi-off'}" data-name="${medalLabels[m]}" title="${medalLabels[m]}">`;
-    h += `<img src="images/quest/icon_${medalNames[m]}.png">`;
+    h += `<img src="images/quest/icon_${medalNames[m]}.webp">`;
     h += '</div>';
   }
   h += '</div>';
@@ -848,9 +851,9 @@ function buildQuestScreen(p, slotIdx) {
 
   // === Bottom-right: spiritual stones ===
   const stones = [
-    {name:'Kokiri Emerald', img:'kokiris_emerald.png', has:p.kokiriEmerald, key:'kokiriEmerald'},
-    {name:"Goron's Ruby", img:'gorons_ruby.png', has:p.goronsRuby, key:'goronsRuby'},
-    {name:"Zora's Sapphire", img:'zoras_sapphire.png', has:p.zorasSapphire, key:'zorasSapphire'},
+    {name:'Kokiri Emerald', img:'kokiris_emerald.webp', has:p.kokiriEmerald, key:'kokiriEmerald'},
+    {name:"Goron's Ruby", img:'gorons_ruby.webp', has:p.goronsRuby, key:'goronsRuby'},
+    {name:"Zora's Sapphire", img:'zoras_sapphire.webp', has:p.zorasSapphire, key:'zorasSapphire'},
   ];
   h += '<div class="quest-stones">';
   for (const st of stones) {
@@ -901,7 +904,7 @@ function buildQuestEditPanel(p, slotIdx) {
   const origGs = orig ? orig.gsTokens : p.gsTokens;
   const gsChanged = p.gsTokens !== origGs;
   h += '<div class="edit-category"><div class="edit-cat-title">Gold Skulltulas</div>';
-  h += `<label class="edit-item${gsChanged?' edit-added':''}" onclick="event.stopPropagation()"><img class="edit-item-icon" src="images/quest/gold_skulltula.png"><span class="edit-item-name">Gold Skulltulas</span><input type="number" class="edit-ammo" min="0" max="100" value="${p.gsTokens}" onchange="setGsTokens(${slotIdx},parseInt(this.value)||0)">`;
+  h += `<label class="edit-item${gsChanged?' edit-added':''}" onclick="event.stopPropagation()"><img class="edit-item-icon" src="images/quest/gold_skulltula.webp"><span class="edit-item-name">Gold Skulltulas</span><input type="number" class="edit-ammo" min="0" max="100" value="${p.gsTokens}" onchange="setGsTokens(${slotIdx},parseInt(this.value)||0)">`;
   if (gsChanged) h += `<span class="edit-badge edit-badge-edit" onclick="event.preventDefault();event.stopPropagation();setGsTokens(${slotIdx},${origGs})" title="Revert to original">edit</span>`;
   h += '</label>';
   h += '</div>';
@@ -929,7 +932,7 @@ function buildQuestEditPanel(p, slotIdx) {
     const isRemoved = !has && origHas;
     h += `<label class="edit-item${isAdded?' edit-added':''}${isRemoved?' edit-removed':''}" onclick="event.stopPropagation()">`;
     h += `<input type="checkbox" ${has?'checked':''} onchange="setQuestBit(${slotIdx},${medalBits[m]},this.checked?1:0)">`;
-    h += `<img class="edit-item-icon" src="images/quest/icon_${medalNames[m].toLowerCase()}.png">`;
+    h += `<img class="edit-item-icon" src="images/quest/icon_${medalNames[m].toLowerCase()}.webp">`;
     h += `<span class="edit-item-name">${medalNames[m]} Medallion</span>`;
     if (origHas && has) h += '<span class="edit-badge edit-badge-orig">save</span>';
     if (isAdded) h += '<span class="edit-badge edit-badge-new">new</span>';
@@ -958,9 +961,9 @@ function buildQuestEditPanel(p, slotIdx) {
 
   // Spiritual stones
   const stones = [
-    {name:'Kokiri Emerald', img:'kokiris_emerald.png', key:'kokiriEmerald'},
-    {name:"Goron's Ruby", img:'gorons_ruby.png', key:'goronsRuby'},
-    {name:"Zora's Sapphire", img:'zoras_sapphire.png', key:'zorasSapphire'},
+    {name:'Kokiri Emerald', img:'kokiris_emerald.webp', key:'kokiriEmerald'},
+    {name:"Goron's Ruby", img:'gorons_ruby.webp', key:'goronsRuby'},
+    {name:"Zora's Sapphire", img:'zoras_sapphire.webp', key:'zorasSapphire'},
   ];
   h += '<div class="edit-category"><div class="edit-cat-title">Spiritual Stones</div>';
   for (const st of stones) {
@@ -1057,7 +1060,7 @@ function renderSlots(be) {
     const valid = slotValidity[i];
 
     // Slot bar (always shown)
-    html += `<div class="slot-bar${valid?'':' empty'}" data-slot="${i}" style="background-image:url('images/backgrounds/file${i+1}.png')" onclick="toggleSlot(${i})">`;
+    html += `<div class="slot-bar${valid?'':' empty'}" data-slot="${i}" style="background-image:url('images/backgrounds/file${i+1}.webp')" onclick="toggleSlot(${i})">`;
     html += `<span class="slot-file-label">File ${i+1}</span>`;
     if (valid) {
       const p = slotParsed[i];
@@ -1078,16 +1081,16 @@ function renderSlots(be) {
       html += `<div class="slot-panel" data-slot="${i}">`;
       html += `<div class="slot-summary-bg"><div class="slot-summary">`;
       html += `<div class="slot-stats">
-        <div class="stat"><img src="images/ui/rupee.png">0</div>
-        <div class="stat"><img src="images/ui/skull.png">0</div>
-        <div class="stat"><img src="images/quest/gold_skulltula.png">0</div>
+        <div class="stat"><img src="images/ui/rupee.webp">0</div>
+        <div class="stat"><img src="images/ui/skull.webp">0</div>
+        <div class="stat"><img src="images/quest/gold_skulltula.webp">0</div>
       </div>`;
       html += `<div class="slot-hearts">`;
       html += `<div class="hearts-row">`;
-      for (let h = 0; h < 3; h++) html += `<img src="images/ui/icon_heart.png" alt="♥">`;
-      for (let h = 0; h < 7; h++) html += `<img src="images/ui/icon_heart.png" class="empty-heart" alt="♡">`;
+      for (let h = 0; h < 3; h++) html += `<img src="images/ui/icon_heart.webp" alt="♥">`;
+      for (let h = 0; h < 7; h++) html += `<img src="images/ui/icon_heart.webp" class="empty-heart" alt="♡">`;
       html += `</div><div class="hearts-row">`;
-      for (let h = 0; h < 10; h++) html += `<img src="images/ui/icon_heart.png" class="empty-heart" alt="♡">`;
+      for (let h = 0; h < 10; h++) html += `<img src="images/ui/icon_heart.webp" class="empty-heart" alt="♡">`;
       html += `</div></div>`;
       html += `</div></div>`;
       html += `</div>`;
@@ -1099,12 +1102,12 @@ function renderSlots(be) {
     // Panel (hidden until bar clicked)
     html += `<div class="slot-panel" data-slot="${i}">`;
 
-    // Summary row with file_details.png background
+    // Summary row with file_details.webp background
     html += `<div class="slot-summary-bg"><div class="slot-summary">`;
     html += `<div class="slot-stats">
-      <div class="stat"><img src="images/ui/rupee.png">${p.rupees}</div>
-      <div class="stat"><img src="images/ui/skull.png">${p.deaths}</div>
-      <div class="stat"><img src="images/quest/gold_skulltula.png">${p.gsTokens}</div>
+      <div class="stat"><img src="images/ui/rupee.webp">${p.rupees}</div>
+      <div class="stat"><img src="images/ui/skull.webp">${p.deaths}</div>
+      <div class="stat"><img src="images/quest/gold_skulltula.webp">${p.gsTokens}</div>
     </div>`;
     html += `<div class="slot-hearts">${buildHeartsHtml(p)}<div class="slot-quest">${buildQuestHtml(p)}</div></div>`;
     html += '</div></div>';
@@ -1329,9 +1332,9 @@ function updateSummary(slotIdx) {
   const summary = panel.querySelector('.slot-summary');
   if (!summary) return;
   summary.innerHTML = `<div class="slot-stats">
-    <div class="stat"><img src="images/ui/rupee.png">${p.rupees}</div>
-    <div class="stat"><img src="images/ui/skull.png">${p.deaths}</div>
-    <div class="stat"><img src="images/quest/gold_skulltula.png">${p.gsTokens}</div>
+    <div class="stat"><img src="images/ui/rupee.webp">${p.rupees}</div>
+    <div class="stat"><img src="images/ui/skull.webp">${p.deaths}</div>
+    <div class="stat"><img src="images/quest/gold_skulltula.webp">${p.gsTokens}</div>
   </div>
   <div class="slot-hearts">${buildHeartsHtml(p)}<div class="slot-quest">${buildQuestHtml(p)}</div></div>`;
 }
@@ -1430,7 +1433,7 @@ function buildItemsEditPanel(p, slotIdx) {
       const name = ITEM_NAMES[options[0]];
       const img = ITEM_IMAGES[options[0]];
       h += `<input type="checkbox" ${hasItem ? 'checked' : ''} onchange="setItem(${slotIdx},${j},this.checked?${options[0]}:255)">`;
-      if (img) h += `<img class="edit-item-icon" src="images/items/${img}.png">`;
+      if (img) h += `<img class="edit-item-icon" src="images/items/${img}.webp">`;
       h += `<span class="edit-item-name">${name}</span>`;
       if (AMMO_SLOTS.has(j)) {
         h += `<input type="number" class="edit-ammo" min="0" max="99" value="${p.ammo[j] || 0}" onchange="setAmmo(${slotIdx},${j},parseInt(this.value)||0)">`;
@@ -1443,7 +1446,7 @@ function buildItemsEditPanel(p, slotIdx) {
       }
       h += '</select>';
       if (hasItem && ITEM_IMAGES[itemId]) {
-        h += `<img class="edit-item-icon" src="images/items/${ITEM_IMAGES[itemId]}.png">`;
+        h += `<img class="edit-item-icon" src="images/items/${ITEM_IMAGES[itemId]}.webp">`;
       }
     }
 
@@ -1844,6 +1847,32 @@ function handleFile(file) {
   reader.onerror = () => showError('Failed to read file');
   reader.readAsArrayBuffer(file);
 }
+
+// ===== IMAGE LOADING =====
+
+// Icons carry a tinted placeholder (see index.html) so a cold cache shows the
+// pause-screen layout instead of an empty grid. `load` doesn't bubble, so listen
+// in the capture phase — that covers every img, including ones rendered later.
+for (const evt of ['load', 'error']) {
+  document.addEventListener(evt, e => {
+    if (e.target.tagName === 'IMG') e.target.classList.add('img-loaded');
+  }, true);
+}
+
+// The user spends a few seconds finding their save file after the page opens.
+// Spend that idle time warming the cache so the first slot paints instantly.
+function preloadAssets() {
+  const urls = [
+    ...PAUSE_TABS.map(t => `images/${t.bg}`),
+    'images/backgrounds/file1.webp', 'images/backgrounds/file2.webp', 'images/backgrounds/file3.webp',
+    'images/backgrounds/file_details.webp', 'images/backgrounds/namebar.webp',
+    'images/backgrounds/tab_bg.webp', 'images/backgrounds/tab_active.webp',
+    ...Object.values(ITEM_IMAGES).map(n => `images/items/${n}.webp`),
+  ];
+  for (const url of urls) new Image().src = url;
+}
+
+(window.requestIdleCallback || (fn => setTimeout(fn, 300)))(preloadAssets);
 
 // ===== CHANGELOG MODAL =====
 
