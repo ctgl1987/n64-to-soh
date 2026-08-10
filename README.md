@@ -30,15 +30,41 @@ Web-based converter that imports N64 emulator save files (`.sra`, `.srm`) and Sh
 
 ### Emulator saves
 
-| Emulator | Extension | Byte Order |
-|----------|-----------|------------|
-| Mupen64 / Mupen64Plus | `.sra` | LE / BS |
-| Project64 | `.sra` | LE |
-| RetroArch (Mupen64Plus-Next / ParaLLEl) | `.srm` | BE |
-| Simple64 / RMG | `.sra` | BE / LE |
-| BizHawk | `.SaveRAM` | BE |
+| Emulator | Extension | Byte Order | Container |
+|----------|-----------|------------|-----------|
+| Mupen64 / Mupen64Plus | `.sra` | LE / BS | raw 32KB SRAM |
+| Project64 | `.sra` | LE | raw 32KB SRAM |
+| RetroArch (Mupen64Plus-Next / ParaLLEl) | `.srm` | BE / LE | combined 296,960-byte blob |
+| Simple64 / RMG | `.sra` | BE / LE | raw 32KB SRAM |
+| BizHawk | `.SaveRAM` | BE | raw 32KB SRAM |
 
 Files smaller than 32KB (like PJ64 saves) are automatically padded.
+
+RetroArch's N64 cores expose every save type as a single blob through
+`RETRO_MEMORY_SAVE_RAM`, so a `.srm` is **not** a bare SRAM dump — it packs EEPROM,
+the four controller paks, SRAM and FlashRAM into one 296,960-byte file:
+
+| Region | Offset | Size |
+|--------|--------|------|
+| EEPROM | `0x00000` | `0x800` |
+| Mempak ×4 | `0x00800` | `0x20000` |
+| **SRAM** (Ocarina of Time) | **`0x20800`** | `0x8000` |
+| FlashRAM | `0x28800` | `0x20000` |
+
+The converter extracts the SRAM region automatically. Unknown container layouts are
+handled by scanning for the slot magic and scoring candidate offsets by how many
+slots actually parse.
+
+### Troubleshooting
+
+**"Cannot detect byte order — ZELD magic not found"**
+
+- **RetroArch SaveRAM compression.** If Settings → Saving → *SaveRAM Compression* is
+  on, RetroArch writes an RZIP-compressed file (magic `#RZIPv1#`) instead of raw
+  bytes. The converter detects this and tells you to turn the option off, load the
+  game once and save again.
+- **Wrong save type.** Ocarina of Time uses 32KB SRAM. An `.eep` (EEPROM) or `.fla`
+  (FlashRAM) file belongs to a different game.
 
 ### SoH saves
 

@@ -3,6 +3,25 @@
 const SLOT_OFFSETS = [0x20, 0x1470, 0x28C0];
 const SLOT_SIZE = 0x1450;
 
+// N64 SRAM is 32KB. Some emulators wrap it in a larger container file.
+const SRAM_SIZE = 0x8000;
+
+// RetroArch's N64 cores (Mupen64Plus-Next, ParaLLEl N64) expose every save type
+// as one blob through RETRO_MEMORY_SAVE_RAM, so the .srm holds all of them:
+//   eeprom  0x800  @ 0x00000
+//   mempack 0x20000 @ 0x00800   (4 controller paks x 0x8000)
+//   sram    0x8000  @ 0x20800   <-- the part we want
+//   flashram 0x20000 @ 0x28800
+// Total 0x48800 (296,960 bytes). ParaLLEl N64 appends a 64DD disk area when a
+// disk is loaded, which only makes the file longer; the SRAM stays at 0x20800.
+const CONTAINERS = [
+  { base: 0x00000, label: 'raw SRAM' },
+  { base: 0x20800, label: 'RetroArch .srm (libretro combined)' },
+];
+
+// RetroArch writes an RZIP-compressed savefile when "SaveRAM Compression" is on.
+const RZIP_MAGIC = [0x23, 0x52, 0x5A, 0x49, 0x50, 0x76, 0x01, 0x23]; // "#RZIPv\x01#"
+
 const CHARACTER_MAP = {};
 for (let i = 0; i <= 9; i++) CHARACTER_MAP[i] = String.fromCharCode(i + 48);
 for (let i = 171; i <= 196; i++) CHARACTER_MAP[i] = String.fromCharCode(i - 106);
@@ -128,6 +147,84 @@ function toBigEndian(raw, order) {
     }
   }
   return be;
+}
+
+// ===== CONTAINER DETECTION =====
+
+function isRzip(raw) {
+  return raw.length >= RZIP_MAGIC.length && RZIP_MAGIC.every((b, i) => raw[i] === b);
+}
+
+// Copies the 32KB SRAM starting at `base`, zero-padding when the file is short
+// (PJ64 truncates trailing unused SRAM).
+function sramWindow(raw, base) {
+  const win = new Uint8Array(SRAM_SIZE);
+  win.set(raw.subarray(base, Math.min(raw.length, base + SRAM_SIZE)));
+  return win;
+}
+
+function countValidSlots(be) {
+  let n = 0;
+  for (let i = 0; i < 3; i++) {
+    if (isSlotValid(be.slice(SLOT_OFFSETS[i], SLOT_OFFSETS[i] + SLOT_SIZE))) n++;
+  }
+  return n;
+}
+
+// Last resort for containers we don't know about: find the slot magic anywhere in
+// the file and work backwards to the SRAM base it implies. A single magic hit is
+// ambiguous (it could be any of the 3 slots), so every candidate is scored by how
+// many slots actually parse and the best one wins.
+function scanForSramBase(raw) {
+  const MAGIC_AT = [0x3C, 0x148C, 0x28DC]; // slot magic, relative to the SRAM base
+  const patterns = [
+    [0x5A, 0x45, 0x4C, 0x44], // BE  ZELD
+    [0x44, 0x4C, 0x45, 0x5A], // LE  DLEZ
+    [0x45, 0x5A, 0x44, 0x4C], // BS  EZDL
+    [0x4C, 0x44, 0x5A, 0x45], // WS  LDZE
+  ];
+  const seen = new Set();
+  let best = null;
+
+  for (let o = 0; o + 4 <= raw.length; o += 4) {
+    if (!patterns.some(p => raw[o] === p[0] && raw[o+1] === p[1] && raw[o+2] === p[2] && raw[o+3] === p[3])) continue;
+
+    for (const m of MAGIC_AT) {
+      const base = o - m;
+      if (base < 0 || base % 4 !== 0 || seen.has(base)) continue;
+      seen.add(base);
+
+      const win = sramWindow(raw, base);
+      const order = detectByteOrder(win);
+      if (!order) continue;
+
+      const score = countValidSlots(toBigEndian(win, order));
+      if (score > 0 && (!best || score > best.score)) best = { base, score };
+    }
+  }
+  return best ? best.base : null;
+}
+
+// Finds the 32KB SRAM inside whatever container the emulator wrote.
+// Returns { data, order, container } or null.
+function locateSram(raw) {
+  for (const c of CONTAINERS) {
+    if (c.base + 0x3D10 > raw.length) continue;
+    const win = sramWindow(raw, c.base);
+    const order = detectByteOrder(win);
+    if (order) return { data: win, order, container: c.label };
+  }
+
+  const base = scanForSramBase(raw);
+  if (base !== null) {
+    const win = sramWindow(raw, base);
+    return {
+      data: win,
+      order: detectByteOrder(win),
+      container: `unrecognised container (SRAM @ 0x${base.toString(16).toUpperCase()})`,
+    };
+  }
+  return null;
 }
 
 // ===== SLOT PARSING =====
@@ -1601,22 +1698,22 @@ function handleBinary(raw, filename) {
   slotParsed = [null, null, null];
   slotOriginal = [null, null, null];
   slotValidity = [false, false, false];
-  let data = raw;
+  if (isRzip(raw)) {
+    showError('This savefile is RZIP-compressed by RetroArch. Turn off Settings → Saving → "SaveRAM Compression", load the game once and save again, then upload the new file.');
+    return;
+  }
   if (raw.length < 0x3D10) {
     showError(`File too small (${formatSize(raw.length)}). Need at least 15,632 bytes for 3 save slots.`);
     return;
   }
-  if (raw.length < 0x8000) {
-    data = new Uint8Array(0x8000);
-    data.set(raw);
-  }
 
-  const order = detectByteOrder(data);
-  if (!order) {
-    showError('Cannot detect byte order — ZELD magic not found. Not a valid N64 OoT save file.');
+  const found = locateSram(raw);
+  if (!found) {
+    showError('Cannot detect byte order — ZELD magic not found. Not a valid N64 OoT save file. If this is an EEPROM (.eep) or FlashRAM (.fla) save it belongs to a different game — Ocarina of Time uses 32KB SRAM.');
     return;
   }
 
+  const { data, order, container } = found;
   const be = toBigEndian(data, order);
 
   // Count valid slots
@@ -1634,6 +1731,7 @@ function handleBinary(raw, filename) {
     filename,
     details: [
       ['Format', 'N64 SRAM'],
+      ['Container', container],
       ['Byte order', order],
       ['Size', formatSize(raw.length)],
       ['Slots', `${validCount}/3` + (slotNames.length ? ` (${slotNames.join(', ')})` : '')],
