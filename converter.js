@@ -1,3 +1,43 @@
+// ===== VERSION & CHANGELOG =====
+
+// Date-based version (CalVer). The site deploys straight from main, so there are
+// no tagged releases to number — the date of the newest changelog entry IS the
+// version. Bump APP_VERSION and add an entry in the same commit.
+const APP_VERSION = '2026.08.10';
+
+const CHANGELOG = [
+  {
+    date: '2026-08-10',
+    changes: [
+      'Support RetroArch <code>.srm</code> saves. These are not bare SRAM dumps — RetroArch packs EEPROM, the four controller paks, SRAM and FlashRAM into one 296,960-byte file, which the converter now unpacks automatically.',
+      'Detect RZIP-compressed savefiles (RetroArch’s "SaveRAM Compression" option) and explain how to turn it off.',
+      'Fall back to scanning for the save magic when the container layout is unknown.',
+      'Show the detected container in the file info panel.',
+      'Clearer error when the file is an EEPROM or FlashRAM save from a different game.',
+    ],
+  },
+  {
+    date: '2026-07-06',
+    changes: [
+      'Edit panels for the Items, Equipment and Quest screens.',
+      'Edit feedback badges, per-screen reset and scroll preservation.',
+      'Fixed bottle and trade slot ordering, and dropdown readability.',
+      'Moved the name bar to a global position below all pause screens.',
+      'HyliaSerif as the global font.',
+    ],
+  },
+  {
+    date: '2026-07-05',
+    changes: [
+      'First release: N64 SRAM to Ship of Harkinian <code>.sav</code> conversion.',
+      'Visual preview of all 3 slots using the original pause menu layout.',
+      'Import existing SoH saves, with automatic version upgrade (v1/v2/v3 &rarr; v4).',
+      'Automatic byte order detection across BE, LE, BS and WS.',
+      'Multi-slot export with preview, and deployment to GitHub Pages.',
+    ],
+  },
+];
+
 // ===== CONSTANTS =====
 
 const SLOT_OFFSETS = [0x20, 0x1470, 0x28C0];
@@ -1804,6 +1844,38 @@ function handleFile(file) {
   reader.onerror = () => showError('Failed to read file');
   reader.readAsArrayBuffer(file);
 }
+
+// ===== CHANGELOG MODAL =====
+
+function buildChangelog() {
+  return CHANGELOG.map(rel => {
+    const items = rel.changes.map(c => `<li>${c}</li>`).join('');
+    const latest = rel.date === CHANGELOG[0].date ? '<span class="cl-badge">current</span>' : '';
+    return `<div class="cl-release">
+      <div class="cl-date">${rel.date}${latest}</div>
+      <ul class="cl-list">${items}</ul>
+    </div>`;
+  }).join('');
+}
+
+function openChangelog() {
+  document.getElementById('changelogContent').innerHTML = buildChangelog();
+  document.getElementById('changelogModal').style.display = 'flex';
+}
+
+function closeChangelog() {
+  document.getElementById('changelogModal').style.display = 'none';
+}
+
+// Version label doubles as the changelog trigger, so the number on screen and the
+// newest entry can never drift apart.
+document.getElementById('versionLink').textContent = `v${APP_VERSION}`;
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('changelogModal').style.display !== 'none') closeChangelog();
+  else if (document.getElementById('previewModal').style.display !== 'none') closePreview();
+});
 
 // Drop zone
 const dropZone = document.getElementById('dropZone');

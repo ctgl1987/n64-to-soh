@@ -1,6 +1,7 @@
 # SRA to SoH Save Converter
 
 [![GitHub Pages](https://img.shields.io/badge/Live_Demo-GitHub_Pages-blue?logo=github)](https://ctgl1987.github.io/n64-to-soh/)
+[![Version](https://img.shields.io/badge/Version-2026.08.10-informational)](https://ctgl1987.github.io/n64-to-soh/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Made for SoH](https://img.shields.io/badge/Ship_of_Harkinian-Ackbar_Delta_9.2.3-gold)](https://www.shipofharkinian.com/)
 [![Save Format](https://img.shields.io/badge/Save_Format-v4-orange)]()
@@ -86,6 +87,15 @@ Generates saves compatible with **Ship of Harkinian Ackbar Delta (9.2.3)** — s
 8. Place the exported `.sav` in your SoH save directory
 
 No server required — everything runs client-side in the browser.
+
+## Versioning
+
+The site deploys straight from `main`, so there are no tagged releases. The version
+is the date of the newest changelog entry (CalVer, `YYYY.MM.DD`) and is shown in the
+page header — click it for the full changelog. Quote that number when reporting a bug.
+
+Both the version and the changelog live in `CHANGELOG` / `APP_VERSION` at the top of
+`converter.js`; bump them in the same commit as the change.
 
 ## Save format
 
