@@ -1077,10 +1077,11 @@ function buildSaveScreen(i, p) {
     h += `<option value="${t.version}"${t.version === 4 ? ' selected' : ''}>${t.label}</option>`;
   }
   h += '</select>';
+  h += '<span class="save-export-buttons">';
   h += `<button class="export-btn" onclick="event.stopPropagation();exportChecked(${i})">Export .sav</button>`;
   h += `<button class="preview-btn" onclick="event.stopPropagation();previewSlot(${i})">Preview</button>`;
   h += `<button class="reset-btn" onclick="event.stopPropagation();resetEdits(${i})">Reset</button>`;
-  h += '</div>';
+  h += '</span>';
   h += '<span class="export-hint">Exports as prefix1.sav, prefix2.sav, etc.</span>';
   h += '</div>';
 
