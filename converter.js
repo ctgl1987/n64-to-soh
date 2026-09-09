@@ -3,9 +3,16 @@
 // Date-based version (CalVer). The site deploys straight from main, so there are
 // no tagged releases to number — the date of the newest changelog entry IS the
 // version. Bump APP_VERSION and add an entry in the same commit.
-const APP_VERSION = '2026.08.10';
+const APP_VERSION = '2026.09.09';
 
 const CHANGELOG = [
+  {
+    date: '2026-09-09',
+    changes: [
+      'Choose the output Ship of Harkinian save format version when exporting: v4 or v3.',
+      'The version selector applies to N64 <code>.sra</code>/<code>.srm</code> conversions and re-exported <code>.sav</code> files alike.',
+    ],
+  },
   {
     date: '2026-08-10',
     changes: [
@@ -73,6 +80,37 @@ CHARACTER_MAP[223] = ' '; CHARACTER_MAP[228] = '-'; CHARACTER_MAP[234] = '.';
 
 const REVERSE_CHARACTER_MAP = {};
 for (const [k, v] of Object.entries(CHARACTER_MAP)) REVERSE_CHARACTER_MAP[v] = Number(k);
+
+// v3-era SoH (Khan Bravo 6.1.1) stores profile names with a compact charset:
+// 0-9 digits, 10-35 A-Z, 36-61 a-z, 62/63 space.
+const CHARACTER_MAP_V3 = {};
+for (let i = 0; i <= 9; i++) CHARACTER_MAP_V3[i] = String(i);
+for (let i = 10; i <= 35; i++) CHARACTER_MAP_V3[i] = String.fromCharCode(i + 55);
+for (let i = 36; i <= 61; i++) CHARACTER_MAP_V3[i] = String.fromCharCode(i + 61);
+CHARACTER_MAP_V3[62] = ' '; CHARACTER_MAP_V3[63] = ' ';
+
+// Convert 8 profile-name bytes between the v4 (0xAB-0xC4 / 0xDF) and v3 (compact) charsets.
+function nameV4toV3(bytes) {
+  const out = [];
+  for (const b of bytes) {
+    if (b >= 171 && b <= 222) out.push(b - 161);
+    else if (b >= 0 && b <= 9) out.push(b);
+    else if (b === 0) out.push(0);
+    else out.push(62);
+  }
+  return out;
+}
+
+function nameV3toV4(bytes) {
+  const out = [];
+  for (const b of bytes) {
+    if (b >= 10 && b <= 61) out.push(b + 161);
+    else if (b >= 0 && b <= 9) out.push(b);
+    else if (b === 0) out.push(0);
+    else out.push(223);
+  }
+  return out;
+}
 
 const ITEM_NAMES = {
   0:'Deku Stick',1:'Deku Nut',2:'Bomb',3:'Fairy Bow',4:'Fire Arrow',5:"Din's Fire",
@@ -295,8 +333,10 @@ function validateSlot(p) {
 function decodeName(nameBytes) {
   let n = '';
   for (const b of nameBytes) {
-    if (b === 0 || b === 223 && n.length === 0) continue;
-    n += CHARACTER_MAP[b] || '';
+    if (b === 0 || (b === 223 && n.length === 0)) continue;
+    const c = (CHARACTER_MAP[b] || CHARACTER_MAP_V3[b] || '').trim();
+    if (!c) continue;
+    n += c;
   }
   return n.trim() || 'LINK';
 }
@@ -380,18 +420,21 @@ function sohDataToDisplay(data) {
 
 function buildSohSaveScreen(result, filename) {
   window._upgradedSave = result.json;
+  const versionSelect = `<select class="export-select" id="exportVersion0" onclick="event.stopPropagation()">` +
+    TARGET_VERSIONS.map(t => `<option value="${t.version}"${t.version === 4 ? ' selected' : ''}>${t.label}</option>`).join('') +
+    `</select>`;
   let h = '<div class="save-screen-inner">';
   if (result.error) {
     h += `<div class="upgrade-error">${result.error}</div>`;
   } else if (result.alreadyCurrent) {
     h += '<div class="upgrade-ok">Version 4 (current)</div>';
-    h += `<div class="upgrade-actions"><button class="export-btn" onclick="downloadSohSave('${filename}')">Download .sav</button> <button class="reset-btn" onclick="resetEdits(0)">Reset</button></div>`;
+    h += `<div class="upgrade-actions">${versionSelect}<button class="export-btn" onclick="downloadSohSave('${filename}')">Download .sav</button> <button class="reset-btn" onclick="resetEdits(0)">Reset</button></div>`;
   } else if (result.upgraded) {
     h += `<div class="upgrade-ok">Upgraded from v${result.fromVersion} → v4</div>`;
     h += '<ul class="upgrade-changes">';
     for (const c of result.changes) h += `<li>${c}</li>`;
     h += '</ul>';
-    h += `<div class="upgrade-actions"><button class="export-btn" onclick="downloadSohSave('${filename}')">Download .sav</button> <button class="reset-btn" onclick="resetEdits(0)">Reset</button></div>`;
+    h += `<div class="upgrade-actions">${versionSelect}<button class="export-btn" onclick="downloadSohSave('${filename}')">Download .sav</button> <button class="reset-btn" onclick="resetEdits(0)">Reset</button></div>`;
   }
   h += '</div>';
   return h;
@@ -466,7 +509,7 @@ function renderSohSlot(data, filename, result) {
 
 // ===== SOH JSON GENERATION =====
 
-function generateSohJson(d) {
+function generateSohJson(d, targetVersion) {
   const inv = 0x74;
   const items = []; for(let i=0;i<24;i++) items.push(u8(d,inv+i));
   const ammo = []; for(let i=0;i<16;i++) ammo.push(s8(d,inv+0x18+i));
@@ -522,7 +565,7 @@ function generateSohJson(d) {
     dogParams:0, filenameLanguage:2, maskMemory:0
   };
 
-  return {
+  return convertToTargetVersion({
     fileType:0, version:1,
     sections:{
       base:{data:saveData, version:4},
@@ -537,7 +580,7 @@ function generateSohJson(d) {
       },version:1},
       trackerData:{data:{areasSpoiled:4294967295,checkStatus:[]},version:1}
     }
-  };
+  }, targetVersion);
 }
 
 // ===== ITEM IMAGE MAP =====
@@ -1029,6 +1072,11 @@ function buildSaveScreen(i, p) {
   // Filename + buttons
   h += '<div class="save-export-actions">';
   h += `<input class="export-input" id="exportName${i}" value="file" placeholder="prefix" onclick="event.stopPropagation()">`;
+  h += `<select class="export-select" id="exportVersion${i}" onclick="event.stopPropagation()">`;
+  for (const t of TARGET_VERSIONS) {
+    h += `<option value="${t.version}"${t.version === 4 ? ' selected' : ''}>${t.label}</option>`;
+  }
+  h += '</select>';
   h += `<button class="export-btn" onclick="event.stopPropagation();exportChecked(${i})">Export .sav</button>`;
   h += `<button class="preview-btn" onclick="event.stopPropagation();previewSlot(${i})">Preview</button>`;
   h += `<button class="reset-btn" onclick="event.stopPropagation();resetEdits(${i})">Reset</button>`;
@@ -1245,9 +1293,10 @@ function applyEdits(slotIndex, json, callerSlot) {
 function downloadSohSave(filename) {
   const json = window._upgradedSave;
   if (!json) return;
+  const version = parseInt(document.getElementById('exportVersion0').value) || 4;
   const copy = JSON.parse(JSON.stringify(json));
   applyToggleEdits(copy.sections.base.data, 0);
-  downloadJson(copy, filename);
+  downloadJson(convertToTargetVersion(copy, version), filename);
 }
 
 function screenHasChanges(slotIdx, screenKey) {
@@ -1551,13 +1600,14 @@ function downloadJson(json, filename) {
 
 function exportChecked(callerSlot) {
   const prefix = document.getElementById('exportName' + callerSlot).value || 'file';
+  const version = parseInt(document.getElementById('exportVersion' + callerSlot).value) || 4;
   let exported = 0;
   for (let s = 0; s < 3; s++) {
     const cb = document.getElementById(`exportCheck${callerSlot}_${s}`);
     if (!cb || !cb.checked || !slotValidity[s]) continue;
     const offset = SLOT_OFFSETS[s];
     const slotData = currentBE.slice(offset, offset + SLOT_SIZE);
-    let json = generateSohJson(slotData);
+    let json = generateSohJson(slotData, version);
     json = applyEdits(s, json, callerSlot);
     const filename = `${prefix}${s + 1}.sav`;
     setTimeout(() => downloadJson(json, filename), exported * 200);
@@ -1697,6 +1747,7 @@ function upgradeSohSave(json) {
   json.sections.base.version = 4;
   ensureField(json, 'version', 1);
   ensureField(json, 'fileType', 0);
+  data.playerName = nameV3toV4(data.playerName || []);
   if (!json.sections.sohStats) {
     json.sections.sohStats = {data: JSON.parse(JSON.stringify(DEFAULT_SOH_STATS)), version: 1};
   }
@@ -1704,6 +1755,70 @@ function upgradeSohSave(json) {
   ensureField(json.sections, 'trackerData', {data:{areasSpoiled:4294967295,checkStatus:[]}, version:1});
 
   return {json, upgraded: true, fromVersion: baseVersion, changes};
+}
+
+
+// ===== TARGET VERSION (v3 / v4) =====
+
+const TARGET_VERSIONS = [
+  {version: 4, label: 'format v4', short: 'v4'},
+  {version: 3, label: 'format v3', short: 'v3'},
+];
+
+// Ship of Harkinian sohStats shape as written by v3-era builds (e.g. Khan Bravo 6.1.1).
+const SOH_STATS_V3 = {
+  buildVersion: 'KHAN BRAVO (6.1.1)', buildVersionMajor: 6, buildVersionMinor: 1, buildVersionPatch: 1,
+  counts: new Array(106).fill(0), dungeonKeys: new Array(19).fill(0),
+  entrancesDiscovered: new Array(66).fill(0), heartContainers: 0, heartPieces: 0,
+  locationsSkipped: new Array(745).fill(0), pauseTimer: 0, playTimer: 0,
+  scenesDiscovered: new Array(4).fill(0), timestamps: new Array(171).fill(0)
+};
+
+// Convert a normalized v4-structure save to the requested output version.
+function fitArray(src, shape) {
+  const out = new Array(shape.length).fill(0);
+  if (Array.isArray(src)) {
+    for (let i = 0; i < Math.min(shape.length, src.length); i++) out[i] = src[i];
+  }
+  return out;
+}
+
+function convertToTargetVersion(json, targetVersion) {
+  const copy = JSON.parse(JSON.stringify(json));
+  if (targetVersion === 4) return copy;
+
+  const data = copy.sections.base.data;
+
+  // v4-only base.data fields
+  delete data.filenameLanguage;
+  delete data.maskMemory;
+  data.isMasterQuest = 0; // stored as integer in v3
+  data.n64ddFlag = 0;     // v3 kept an N64DD flag slot
+  data.randomizerInf = new Array(9).fill(0);
+  data.playerName = nameV4toV3(data.playerName || []);
+
+  // Embed sohStats back into base.data, reshaped to the v3 stats layout
+  const v4Stats = (copy.sections.sohStats && copy.sections.sohStats.data) || DEFAULT_SOH_STATS;
+  const v3Stats = JSON.parse(JSON.stringify(SOH_STATS_V3));
+  for (const k of ['counts','dungeonKeys','entrancesDiscovered',
+                   'heartContainers','heartPieces','pauseTimer','playTimer','scenesDiscovered']) {
+    if (Array.isArray(SOH_STATS_V3[k])) {
+      if (k in v4Stats) v3Stats[k] = fitArray(v4Stats[k], SOH_STATS_V3[k]);
+    } else if (k in v4Stats) {
+      v3Stats[k] = v4Stats[k];
+    }
+  }
+  const srcTimestamps = ('itemTimestamps' in v4Stats) ? v4Stats.itemTimestamps
+                      : ('timestamps' in v4Stats) ? v4Stats.timestamps : null;
+  if (srcTimestamps) v3Stats.timestamps = fitArray(srcTimestamps, SOH_STATS_V3.timestamps);
+  data.sohStats = v3Stats;
+
+  copy.sections = {base: copy.sections.base, randomizer: {data: null, version: 2}};
+  copy.sections.base.version = 3;
+  delete copy.fileType;
+  copy.version = 1;
+
+  return copy;
 }
 
 

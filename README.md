@@ -22,6 +22,7 @@ Web-based converter that imports N64 emulator save files (`.sra`, `.srm`) and Sh
 - **Tooltips** on all items for quick identification
 - **SoH save import**: load existing `.sav` JSON files for viewing and re-export
 - **Save version upgrade**: automatically upgrades v1/v2/v3 saves to v4
+- **Selectable target version**: exports as SoH save format v4 or v3
 - **Save validation** with warnings for out-of-range values
 - **Multi-slot export** with checkboxes and export preview modal
 - **Auto byte-order detection** across BE, LE, BS, and WS formats
@@ -73,7 +74,12 @@ Ship of Harkinian `.sav` files (JSON format) are supported for both viewing and 
 
 ### Target version
 
-Generates saves compatible with **Ship of Harkinian Ackbar Delta (9.2.3)** — save format version 4.
+The Save screen includes a version selector for the exported `.sav`. Choose between:
+
+- **format v4** (default)
+- **format v3**
+
+The selector applies to N64 `.sra`/`.srm` conversions and to re-exported `.sav` files alike. Profile names are carried over and translated between the v3 and v4 name charsets.
 
 ## Usage
 
