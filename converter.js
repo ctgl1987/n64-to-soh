@@ -1792,7 +1792,7 @@ function convertToTargetVersion(json, targetVersion) {
   // v4-only base.data fields
   delete data.filenameLanguage;
   delete data.maskMemory;
-  data.isMasterQuest = 0; // stored as integer in v3
+  data.isMasterQuest = data.isMasterQuest ? 1 : 0;
   data.n64ddFlag = 0;     // v3 kept an N64DD flag slot
   data.randomizerInf = new Array(9).fill(0);
   data.playerName = nameV4toV3(data.playerName || []);
