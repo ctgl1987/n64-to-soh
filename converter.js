@@ -334,9 +334,7 @@ function decodeName(nameBytes) {
   let n = '';
   for (const b of nameBytes) {
     if (b === 0 || (b === 223 && n.length === 0)) continue;
-    const c = (CHARACTER_MAP[b] || CHARACTER_MAP_V3[b] || '').trim();
-    if (!c) continue;
-    n += c;
+    n += CHARACTER_MAP[b] || CHARACTER_MAP_V3[b] || '';
   }
   return n.trim() || 'LINK';
 }
