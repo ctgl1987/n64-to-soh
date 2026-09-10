@@ -1606,8 +1606,9 @@ function exportChecked(callerSlot) {
     if (!cb || !cb.checked || !slotValidity[s]) continue;
     const offset = SLOT_OFFSETS[s];
     const slotData = currentBE.slice(offset, offset + SLOT_SIZE);
-    let json = generateSohJson(slotData, version);
+    let json = generateSohJson(slotData, 4);
     json = applyEdits(s, json, callerSlot);
+    json = convertToTargetVersion(json, version);
     const filename = `${prefix}${s + 1}.sav`;
     setTimeout(() => downloadJson(json, filename), exported * 200);
     exported++;
