@@ -105,7 +105,7 @@ input,select,button,textarea{font-family:inherit}
 .items-content{padding:53px 50px 24px 48px}
 .equip-content{padding:50px 24px 24px 10px}
 .quest-content{padding:50px 42px 24px 22px}
-.save-content{padding:50px 22px 24px 20px;display:flex;align-items:center;justify-content:center}
+.save-content{padding:34px 22px 16px 20px;display:flex;align-items:center;justify-content:center}
 
 /* Items grid inside pause screen */
 .items-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0}
@@ -198,19 +198,20 @@ input,select,button,textarea{font-family:inherit}
 
 /* Export & Save screen */
 .save-screen-inner{padding:.5rem}
-.save-edit{margin-bottom:1rem}
-.save-edit-title{font-size:.8rem;color:var(--gold-dim);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em}
+.save-edit{margin-bottom:.5rem}
+.save-edit-title{font-size:.8rem;color:var(--gold-dim);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em}
 .save-edit-fields{display:flex;gap:.75rem;flex-wrap:wrap}
 .save-edit-fields label{font-size:.75rem;color:var(--text-dim);display:flex;flex-direction:column;gap:2px}
-.save-field{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);color:var(--text);padding:.35rem .5rem;
+.save-field{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);color:var(--text);padding:.3rem .5rem;
   font-size:.85rem;width:100px;}
 .save-field:focus{outline:none;border-color:var(--gold-dim)}
-.save-export{border-top:1px solid rgba(255,255,255,.1);padding-top:.75rem}
-.save-export-slots{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.75rem}
+.save-export{border-top:1px solid rgba(255,255,255,.1);padding-top:.5rem}
+.save-export-slots{display:flex;flex-direction:column;gap:.25rem;margin-bottom:.5rem}
 .save-slot-check{font-size:.8rem;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:.4rem}
 .save-slot-check.disabled{color:var(--text-dim);opacity:.4;cursor:default}
 .save-slot-check input{accent-color:var(--gold)}
-.save-export-actions{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+.save-export-actions{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
+.save-export-buttons{display:flex;gap:.5rem;flex-basis:100%}
 .export-btn{background:var(--gold);color:var(--bg);border:none;padding:.45rem 1.25rem;font-weight:600;cursor:pointer;font-size:.85rem;}
 .export-btn:hover{filter:brightness(1.1)}
 .preview-btn{background:rgba(255,255,255,.1);color:var(--text);border:1px solid rgba(255,255,255,.2);padding:.45rem 1rem;cursor:pointer;font-size:.85rem;}
@@ -219,6 +220,9 @@ input,select,button,textarea{font-family:inherit}
 .reset-btn:hover{background:rgba(193,68,62,.35)}
 .export-input{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);color:var(--text);padding:.4rem .6rem;font-size:.85rem;width:100px}
 .export-input:focus{outline:none;border-color:var(--gold-dim)}
+.export-select{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);color:var(--text);padding:.4rem .6rem;font-size:.8rem}
+.export-select:focus{outline:none;border-color:var(--gold-dim)}
+.export-select option{background:var(--bg);color:var(--text)}
 .export-hint{font-size:.7rem;color:var(--text-dim);display:block;margin-top:.3rem}
 
 /* Slot validation warning */
