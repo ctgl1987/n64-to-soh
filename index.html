@@ -223,6 +223,7 @@ input,select,button,textarea{font-family:inherit}
 .export-select{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);color:var(--text);padding:.4rem .6rem;font-size:.8rem}
 .export-select:focus{outline:none;border-color:var(--gold-dim)}
 .export-select option{background:var(--bg);color:var(--text)}
+.export-compat{order:99;flex-basis:100%;font-size:.7rem;color:var(--gold-dim);letter-spacing:.02em;margin-top:.15rem}
 .export-hint{font-size:.7rem;color:var(--text-dim);display:block;margin-top:.3rem}
 
 /* Slot validation warning */
@@ -263,7 +264,7 @@ input,select,button,textarea{font-family:inherit}
 .upgrade-changes{list-style:disc;margin-left:1.5rem;margin-bottom:1rem;color:var(--text);font-size:.85rem}
 .upgrade-changes li{margin-bottom:.3rem}
 .upgrade-info{font-size:.9rem;color:var(--text-dim);margin-bottom:1rem}
-.upgrade-actions{display:flex;gap:.75rem}
+.upgrade-actions{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
 
 /* Edit toggle button */
 .screen-actions{position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:4px}

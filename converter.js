@@ -3,9 +3,16 @@
 // Date-based version (CalVer). The site deploys straight from main, so there are
 // no tagged releases to number — the date of the newest changelog entry IS the
 // version. Bump APP_VERSION and add an entry in the same commit.
-const APP_VERSION = '2026.09.09';
+const APP_VERSION = '2026.09.11';
 
 const CHANGELOG = [
+  {
+    date: '2026-09-11',
+    changes: [
+      'The export version selector now says which Ship of Harkinian release each format targets.',
+      "Added the missing Adult's and Giant's Wallet icons on the Equipment screen.",
+    ],
+  },
   {
     date: '2026-09-09',
     changes: [
@@ -184,7 +191,9 @@ const UPGRADE_DEFS = [
   {name:'Bomb Bag', shift:3, mask:7, vals:['—','Bomb Bag (20)','Bomb Bag (30)','Bomb Bag (40)'], imgKey:'bomb_bag'},
   {name:'Strength', shift:6, mask:7, vals:['—',"Goron's Bracelet",'Silver Gauntlets','Golden Gauntlets'], imgKey:'gauntlets'},
   {name:'Scale', shift:9, mask:7, vals:['—','Silver Scale','Golden Scale'], imgKey:'scale'},
-  {name:'Wallet', shift:12, mask:3, vals:["Child's Wallet (99)","Adult's Wallet (200)","Giant's Wallet (500)","Tycoon's Wallet (999)"], imgKey:null},
+  // imgMax: the N64 icon sheet only has Adult's and Giant's wallets. Tycoon's is a
+  // Ship of Harkinian addition with no vanilla icon, so it falls back to text.
+  {name:'Wallet', shift:12, mask:3, vals:["Child's Wallet (99)","Adult's Wallet (200)","Giant's Wallet (500)","Tycoon's Wallet (999)"], imgKey:'wallet', imgMax:2},
   {name:'Bullet Bag', shift:14, mask:7, vals:['—','Bullet Bag (30)','Bullet Bag (40)','Bullet Bag (50)'], imgKey:'bullet_bag'},
   {name:'Sticks', shift:17, mask:7, vals:['—','10 Sticks','20 Sticks','30 Sticks'], imgKey:null},
   {name:'Nuts', shift:20, mask:7, vals:['—','20 Nuts','30 Nuts','40 Nuts'], imgKey:null},
@@ -418,9 +427,7 @@ function sohDataToDisplay(data) {
 
 function buildSohSaveScreen(result, filename) {
   window._upgradedSave = result.json;
-  const versionSelect = `<select class="export-select" id="exportVersion0" onclick="event.stopPropagation()">` +
-    TARGET_VERSIONS.map(t => `<option value="${t.version}"${t.version === 4 ? ' selected' : ''}>${t.label}</option>`).join('') +
-    `</select>`;
+  const versionSelect = versionSelectHtml('exportVersion0');
   let h = '<div class="save-screen-inner">';
   if (result.error) {
     h += `<div class="upgrade-error">${result.error}</div>`;
@@ -726,7 +733,8 @@ function buildEquipScreen(p, slotIdx) {
       const added = val !== origVal;
       const label = val < up.vals.length ? up.vals[val] : `${up.name} (${val})`;
       const imgKey = up.imgKey;
-      if (imgKey && val < up.vals.length) upgs.push({title:label, img:`upg_${imgKey}${val}.webp`, added});
+      const maxIcon = up.imgMax !== undefined ? up.imgMax : up.vals.length - 1;
+      if (imgKey && val <= maxIcon) upgs.push({title:label, img:`upg_${imgKey}${val}.webp`, added});
       else upgs.push({title:label, text:label, added});
     }
   }
@@ -1070,20 +1078,16 @@ function buildSaveScreen(i, p) {
   // Filename + buttons
   h += '<div class="save-export-actions">';
   h += `<input class="export-input" id="exportName${i}" value="file" placeholder="prefix" onclick="event.stopPropagation()">`;
-  h += `<select class="export-select" id="exportVersion${i}" onclick="event.stopPropagation()">`;
-  for (const t of TARGET_VERSIONS) {
-    h += `<option value="${t.version}"${t.version === 4 ? ' selected' : ''}>${t.label}</option>`;
-  }
-  h += '</select>';
+  h += versionSelectHtml(`exportVersion${i}`);
   h += '<span class="save-export-buttons">';
   h += `<button class="export-btn" onclick="event.stopPropagation();exportChecked(${i})">Export .sav</button>`;
   h += `<button class="preview-btn" onclick="event.stopPropagation();previewSlot(${i})">Preview</button>`;
   h += `<button class="reset-btn" onclick="event.stopPropagation();resetEdits(${i})">Reset</button>`;
   h += '</span>';
   h += '<span class="export-hint">Exports as prefix1.sav, prefix2.sav, etc.</span>';
-  h += '</div>';
-
-  h += '</div>';
+  h += '</div>'; // save-export-actions
+  h += '</div>'; // save-export
+  h += '</div>'; // save-screen-inner
   return h;
 }
 
@@ -1760,10 +1764,32 @@ function upgradeSohSave(json) {
 
 // ===== TARGET VERSION (v3 / v4) =====
 
+// `compat` is the Ship of Harkinian release each format targets, shown next to the
+// selector so it's obvious which build the exported file will actually load in.
 const TARGET_VERSIONS = [
-  {version: 4, label: 'format v4', short: 'v4'},
-  {version: 3, label: 'format v3', short: 'v3'},
+  {version: 4, label: 'format v4', short: 'v4', compat: 'Ackbar Delta 9.2.3'},
+  {version: 3, label: 'format v3', short: 'v3', compat: 'Khan Bravo 6.1.1 — PS Vita port'},
 ];
+
+const DEFAULT_TARGET_VERSION = 4;
+
+// The selector shows up both on the Save tab and on the imported-.sav screen, so both
+// build it from here to keep them in sync.
+function versionSelectHtml(id) {
+  const opts = TARGET_VERSIONS.map(t =>
+    `<option value="${t.version}"${t.version === DEFAULT_TARGET_VERSION ? ' selected' : ''}>${t.label}</option>`).join('');
+  const def = TARGET_VERSIONS.find(t => t.version === DEFAULT_TARGET_VERSION);
+  return `<select class="export-select" id="${id}" onclick="event.stopPropagation()" onchange="updateCompat('${id}')">${opts}</select>` +
+         `<span class="export-compat" id="${id}Compat">Compatible with ${def.compat}</span>`;
+}
+
+function updateCompat(id) {
+  const sel = document.getElementById(id);
+  const span = document.getElementById(id + 'Compat');
+  if (!sel || !span) return;
+  const t = TARGET_VERSIONS.find(v => v.version === parseInt(sel.value));
+  span.textContent = t ? `Compatible with ${t.compat}` : '';
+}
 
 // Ship of Harkinian sohStats shape as written by v3-era builds (e.g. Khan Bravo 6.1.1).
 const SOH_STATS_V3 = {
