@@ -9,8 +9,11 @@ const CHANGELOG = [
   {
     date: '2026-09-11',
     changes: [
+      'New <strong>Stats</strong> screen for what the pause menu has no slot for: wallet, sticks, nuts, magic, Double Defense, hearts and deaths — with its own editor for the upgrades.',
+      'The Equipment screen now mirrors the game: four fixed slots, showing the quiver for adult Link and the bullet bag for child. Before, it listed whichever four upgrades happened to be owned, so some were silently dropped and others appeared in the wrong row.',
+      "Added the missing Adult's and Giant's Wallet icons.",
       'The export version selector now says which Ship of Harkinian release each format targets.',
-      "Added the missing Adult's and Giant's Wallet icons on the Equipment screen.",
+      'Fixed a broken tag that nested save slots 2 and 3 inside slot 1, hiding them until slot 1 was expanded.',
     ],
   },
   {
@@ -187,16 +190,16 @@ const EQUIP_CATS = [
 ];
 
 const UPGRADE_DEFS = [
-  {name:'Quiver', shift:0, mask:7, vals:['—','Quiver (30)','Quiver (40)','Quiver (50)'], imgKey:'quiver'},
-  {name:'Bomb Bag', shift:3, mask:7, vals:['—','Bomb Bag (20)','Bomb Bag (30)','Bomb Bag (40)'], imgKey:'bomb_bag'},
-  {name:'Strength', shift:6, mask:7, vals:['—',"Goron's Bracelet",'Silver Gauntlets','Golden Gauntlets'], imgKey:'gauntlets'},
-  {name:'Scale', shift:9, mask:7, vals:['—','Silver Scale','Golden Scale'], imgKey:'scale'},
+  {name:'Quiver', shift:0, mask:7, vals:['—','Quiver (30)','Quiver (40)','Quiver (50)'], imgKey:'quiver', screen:'equip', age:'adult'},
+  {name:'Bomb Bag', shift:3, mask:7, vals:['—','Bomb Bag (20)','Bomb Bag (30)','Bomb Bag (40)'], imgKey:'bomb_bag', screen:'equip'},
+  {name:'Strength', shift:6, mask:7, vals:['—',"Goron's Bracelet",'Silver Gauntlets','Golden Gauntlets'], imgKey:'gauntlets', screen:'equip'},
+  {name:'Scale', shift:9, mask:7, vals:['—','Silver Scale','Golden Scale'], imgKey:'scale', screen:'equip'},
   // imgMax: the N64 icon sheet only has Adult's and Giant's wallets. Tycoon's is a
   // Ship of Harkinian addition with no vanilla icon, so it falls back to text.
-  {name:'Wallet', shift:12, mask:3, vals:["Child's Wallet (99)","Adult's Wallet (200)","Giant's Wallet (500)","Tycoon's Wallet (999)"], imgKey:'wallet', imgMax:2},
-  {name:'Bullet Bag', shift:14, mask:7, vals:['—','Bullet Bag (30)','Bullet Bag (40)','Bullet Bag (50)'], imgKey:'bullet_bag'},
-  {name:'Sticks', shift:17, mask:7, vals:['—','10 Sticks','20 Sticks','30 Sticks'], imgKey:null},
-  {name:'Nuts', shift:20, mask:7, vals:['—','20 Nuts','30 Nuts','40 Nuts'], imgKey:null},
+  {name:'Wallet', shift:12, mask:3, vals:["Child's Wallet (99)","Adult's Wallet (200)","Giant's Wallet (500)","Tycoon's Wallet (999)"], imgKey:'wallet', imgMax:2, screen:'stats', icon:'upgrades/upg_wallet1.webp'},
+  {name:'Bullet Bag', shift:14, mask:7, vals:['—','Bullet Bag (30)','Bullet Bag (40)','Bullet Bag (50)'], imgKey:'bullet_bag', screen:'equip', age:'child'},
+  {name:'Sticks', shift:17, mask:7, vals:['—','10 Sticks','20 Sticks','30 Sticks'], imgKey:null, screen:'stats', icon:'items/item_deku_stick.webp'},
+  {name:'Nuts', shift:20, mask:7, vals:['—','20 Nuts','30 Nuts','40 Nuts'], imgKey:null, screen:'stats', icon:'items/item_deku_nut.webp'},
 ];
 
 // ===== BINARY READERS =====
@@ -492,6 +495,7 @@ function renderSohSlot(data, filename, result) {
     items: buildItemsScreen(p, 0),
     equip: buildEquipScreen(p, 0),
     quest: buildQuestScreen(p, 0),
+    stats: buildStatsScreen(p, 0),
     save: buildSohSaveScreen(result, filename),
   };
 
@@ -616,8 +620,9 @@ const EQUIP_IMAGES = [
 
 const PAUSE_TABS = [
   {key:'items', label:'Items', bg:'backgrounds/pause_items.webp'},
-  {key:'equip', label:'Equipment', bg:'backgrounds/pause_equip.webp'},
+  {key:'equip', label:'Equip', bg:'backgrounds/pause_equip.webp'},
   {key:'quest', label:'Quest', bg:'backgrounds/pause_quest.webp'},
+  {key:'stats', label:'Stats', bg:'backgrounds/pause_save.webp'},
   {key:'save', label:'Save', bg:'backgrounds/pause_save.webp'},
 ];
 
@@ -725,22 +730,25 @@ function buildItemsScreen(p, slotIdx) {
 
 function buildEquipScreen(p, slotIdx) {
   const orig = slotOriginal[slotIdx];
-  const upgs = [];
-  for (const up of UPGRADE_DEFS) {
+
+  // The real pause menu has four fixed upgrade slots, and the first one depends on
+  // age: quiver for adult Link, bullet bag for child. Wallet, sticks and nuts have
+  // no slot here at all — they live on the Stats screen.
+  const isChild = p.linkAge === 1;
+  const slots = UPGRADE_DEFS.filter(up =>
+    up.screen === 'equip' && (!up.age || up.age === (isChild ? 'child' : 'adult')));
+
+  const upgs = slots.map(up => {
     const val = (p.upgrades >> up.shift) & up.mask;
+    if (val === 0) return null;
     const origVal = orig ? (orig.upgrades >> up.shift) & up.mask : val;
-    if (val > 0) {
-      const added = val !== origVal;
-      const label = val < up.vals.length ? up.vals[val] : `${up.name} (${val})`;
-      const imgKey = up.imgKey;
-      const maxIcon = up.imgMax !== undefined ? up.imgMax : up.vals.length - 1;
-      if (imgKey && val <= maxIcon) upgs.push({title:label, img:`upg_${imgKey}${val}.webp`, added});
-      else upgs.push({title:label, text:label, added});
-    }
-  }
-  if (p.isMagicAcquired) {
-    upgs.push({title:`Magic: ${p.magic} / ${p.magicLevel === 2 ? 96 : 48}`, img:'upg_scale1.webp', isMagic:true, added:false});
-  }
+    const label = val < up.vals.length ? up.vals[val] : `${up.name} (${val})`;
+    const maxIcon = up.imgMax !== undefined ? up.imgMax : up.vals.length - 1;
+    const added = val !== origVal;
+    return up.imgKey && val <= maxIcon
+      ? {title:label, img:`upg_${up.imgKey}${val}.webp`, added}
+      : {title:label, text:label, added};
+  });
 
   let h = '<div class="screen-actions">';
   if (screenHasChanges(slotIdx, 'equip')) h += `<button class="screen-reset-btn" onclick="event.stopPropagation();resetScreen(${slotIdx},'equip')" title="Reset equipment">↺</button>`;
@@ -750,17 +758,12 @@ function buildEquipScreen(p, slotIdx) {
 
   // Left: upgrades column
   h += '<div class="equip-upgrades">';
-  for (let row = 0; row < 4; row++) {
-    if (row < upgs.length) {
-      const u = upgs[row];
-      h += `<div class="eq-cell eq-owned${u.added?' eq-added':''}" data-name="${u.title}" title="${u.title}">`;
-      if (u.img && !u.isMagic) h += `<img class="eq-icon" src="images/upgrades/${u.img}" alt="${u.title}">`;
-      else if (u.isMagic) h += `<img class="eq-icon" src="images/upgrades/upg_scale1.webp" alt="Magic" style="filter:hue-rotate(200deg)">`;
-      else h += `<span class="upg-text">${u.text}</span>`;
-      h += '</div>';
-    } else {
-      h += '<div class="eq-cell eq-empty" data-name=""></div>';
-    }
+  for (const u of upgs) {
+    if (!u) { h += '<div class="eq-cell eq-empty" data-name=""></div>'; continue; }
+    h += `<div class="eq-cell eq-owned${u.added?' eq-added':''}" data-name="${u.title}" title="${u.title}">`;
+    if (u.img) h += `<img class="eq-icon" src="images/upgrades/${u.img}" alt="${u.title}">`;
+    else h += `<span class="upg-text">${u.text}</span>`;
+    h += '</div>';
   }
   h += '</div>';
 
@@ -823,8 +826,8 @@ function buildEquipEditPanel(p, slotIdx) {
     h += '</div>';
   }
 
-  // Upgrades
-  for (const up of UPGRADE_DEFS) {
+  // Upgrades (only the ones this screen owns; the rest live on Stats)
+  for (const up of UPGRADE_DEFS.filter(u => u.screen === 'equip')) {
     const val = (p.upgrades >> up.shift) & up.mask;
     const origVal = orig ? (orig.upgrades >> up.shift) & up.mask : val;
     h += `<div class="edit-category"><div class="edit-cat-title">${up.name}</div>`;
@@ -843,6 +846,113 @@ function buildEquipEditPanel(p, slotIdx) {
 
   h += '</div></div>';
   return h;
+}
+
+// ===== STATS SCREEN =====
+
+// Bits of the upgrades u32 owned by one screen, so edits on Stats don't mark the
+// Equipment screen as modified (and vice versa).
+function upgradeMaskFor(screenKey) {
+  let m = 0;
+  for (const up of UPGRADE_DEFS) if (up.screen === screenKey) m |= up.mask << up.shift;
+  return m >>> 0;
+}
+
+function statsRows(p, slotIdx) {
+  const orig = slotOriginal[slotIdx];
+  return UPGRADE_DEFS.filter(up => up.screen === 'stats').map(up => {
+    const val = (p.upgrades >> up.shift) & up.mask;
+    const origVal = orig ? (orig.upgrades >> up.shift) & up.mask : val;
+    const maxIcon = up.imgMax !== undefined ? up.imgMax : up.vals.length - 1;
+    const img = up.imgKey && val >= 1 && val <= maxIcon
+      ? `upgrades/upg_${up.imgKey}${val}.webp` : up.icon;
+    return {
+      up, val,
+      label: val < up.vals.length ? up.vals[val] : `${up.name} (${val})`,
+      img, changed: val !== origVal, dim: val === 0,
+    };
+  });
+}
+
+function buildStatsScreen(p, slotIdx) {
+  let h = '<div class="screen-actions">';
+  if (screenHasChanges(slotIdx, 'stats')) h += `<button class="screen-reset-btn" onclick="event.stopPropagation();resetScreen(${slotIdx},'stats')" title="Reset stats">↺</button>`;
+  h += `<button class="edit-toggle-btn" onclick="event.stopPropagation();openStatsEdit(${slotIdx})" title="Edit stats">✎</button>`;
+  h += '</div>';
+
+  h += '<div class="stats-list">';
+  for (const r of statsRows(p, slotIdx)) {
+    h += `<div class="stats-row${r.dim ? ' stats-off' : ''}${r.changed ? ' stats-changed' : ''}" title="${r.label}">`;
+    h += `<img class="stats-icon" src="images/${r.img}" alt="${r.up.name}">`;
+    h += `<span class="stats-name">${r.up.name}</span>`;
+    h += `<span class="stats-value">${r.label}</span>`;
+    h += '</div>';
+  }
+  // Magic and Double Defense have no pause-menu slot either, and nothing else in the
+  // UI surfaces them, so they belong here too. Read-only: both are derived state.
+  const magicCap = p.magicLevel === 2 ? 96 : 48;
+  h += `<div class="stats-row${p.isMagicAcquired ? '' : ' stats-off'}" title="Magic Meter">`;
+  h += '<img class="stats-icon" src="images/upgrades/upg_scale1.webp" alt="Magic" style="filter:hue-rotate(200deg)">';
+  h += '<span class="stats-name">Magic</span>';
+  h += `<span class="stats-value">${p.isMagicAcquired ? `${p.magic} / ${magicCap}` : '—'}</span>`;
+  h += '</div>';
+
+  h += `<div class="stats-row${p.isDoubleDefenseAcquired ? '' : ' stats-off'}" title="Double Defense halves damage taken">`;
+  h += '<img class="stats-icon" src="images/ui/icon_heart_defense.webp" alt="Double Defense">';
+  h += '<span class="stats-name">Double Defense</span>';
+  h += `<span class="stats-value">${p.isDoubleDefenseAcquired ? 'Acquired' : '—'}</span>`;
+  h += '</div>';
+
+  h += `<div class="stats-row" title="Hearts">`;
+  h += '<img class="stats-icon" src="images/ui/icon_heart.webp" alt="Hearts">';
+  h += '<span class="stats-name">Hearts</span>';
+  h += `<span class="stats-value">${(p.health / 16).toFixed(0)} / ${(p.healthCapacity / 16).toFixed(0)}</span>`;
+  h += '</div>';
+
+  h += `<div class="stats-row" title="Times Link has died">`;
+  h += '<img class="stats-icon" src="images/ui/skull.webp" alt="Deaths">';
+  h += '<span class="stats-name">Deaths</span>';
+  h += `<span class="stats-value">${p.deaths}</span>`;
+  h += '</div>';
+  h += '</div>';
+
+  h += buildStatsEditPanel(p, slotIdx);
+  return h;
+}
+
+function buildStatsEditPanel(p, slotIdx) {
+  const orig = slotOriginal[slotIdx];
+  let h = `<div class="edit-panel" id="statsEditPanel${slotIdx}" style="display:none">`;
+  h += '<div class="edit-panel-header"><span>Edit Stats</span>';
+  h += `<button class="edit-panel-close" onclick="event.stopPropagation();closeStatsEdit(${slotIdx})">✕</button></div>`;
+  h += '<div class="edit-panel-body">';
+  for (const up of UPGRADE_DEFS.filter(u => u.screen === 'stats')) {
+    const val = (p.upgrades >> up.shift) & up.mask;
+    const origVal = orig ? (orig.upgrades >> up.shift) & up.mask : val;
+    h += `<div class="edit-category"><div class="edit-cat-title">${up.name}</div>`;
+    const maxV = Math.max(up.vals.length, val + 1);
+    for (let v = 0; v < maxV; v++) {
+      const label = v < up.vals.length ? up.vals[v] : `${up.name} (Level ${v})`;
+      const isChanged = v === val && v !== origVal;
+      h += `<label class="edit-radio${isChanged ? ' edit-modified' : ''}" onclick="event.stopPropagation()">`;
+      h += `<input type="radio" name="upg_${slotIdx}_${up.shift}" value="${v}" ${v === val ? 'checked' : ''} onchange="setUpgrade(${slotIdx},${up.shift},${v})">`;
+      h += `<span>${label}</span>`;
+      if (isChanged) h += `<span class="edit-badge edit-badge-edit" onclick="event.preventDefault();event.stopPropagation();setUpgrade(${slotIdx},${up.shift},${origVal})" title="Revert to original">edit</span>`;
+      h += '</label>';
+    }
+    h += '</div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
+function openStatsEdit(slotIdx) {
+  const panel = document.getElementById('statsEditPanel' + slotIdx);
+  if (panel) panel.style.display = 'flex';
+}
+function closeStatsEdit(slotIdx) {
+  const panel = document.getElementById('statsEditPanel' + slotIdx);
+  if (panel) panel.style.display = 'none';
 }
 
 function buildQuestScreen(p, slotIdx) {
@@ -1175,6 +1285,7 @@ function renderSlots(be) {
       items: buildItemsScreen(p, i),
       equip: buildEquipScreen(p, i),
       quest: buildQuestScreen(p, i),
+      stats: buildStatsScreen(p, i),
       save: buildSaveScreen(i, p),
     };
 
@@ -1313,8 +1424,10 @@ function screenHasChanges(slotIdx, screenKey) {
     }
     return false;
   }
-  if (screenKey === 'equip') {
-    return p.equipment !== o.equipment || p.upgrades !== o.upgrades;
+  if (screenKey === 'equip' || screenKey === 'stats') {
+    const m = upgradeMaskFor(screenKey);
+    const upgChanged = (p.upgrades & m) !== (o.upgrades & m);
+    return screenKey === 'stats' ? upgChanged : (p.equipment !== o.equipment || upgChanged);
   }
   if (screenKey === 'quest') {
     return p.questItems !== o.questItems || p.gsTokens !== o.gsTokens ||
@@ -1330,9 +1443,10 @@ function resetScreen(slotIdx, screenKey) {
   if (screenKey === 'items') {
     p.items = o.items.slice();
     p.ammo = o.ammo.slice();
-  } else if (screenKey === 'equip') {
-    p.equipment = o.equipment;
-    p.upgrades = o.upgrades;
+  } else if (screenKey === 'equip' || screenKey === 'stats') {
+    const m = upgradeMaskFor(screenKey);
+    p.upgrades = ((p.upgrades & ~m) | (o.upgrades & m)) >>> 0;
+    if (screenKey === 'equip') p.equipment = o.equipment;
   } else if (screenKey === 'quest') {
     p.questItems = o.questItems;
     p.gsTokens = o.gsTokens;
@@ -1364,6 +1478,7 @@ function rerenderScreen(slotIdx, screenKey) {
   if (screenKey === 'items') content.innerHTML = buildItemsScreen(p, slotIdx);
   else if (screenKey === 'equip') content.innerHTML = buildEquipScreen(p, slotIdx);
   else if (screenKey === 'quest') content.innerHTML = buildQuestScreen(p, slotIdx);
+  else if (screenKey === 'stats') content.innerHTML = buildStatsScreen(p, slotIdx);
   initNamebarHovers();
 
   if (wasOpen) {
