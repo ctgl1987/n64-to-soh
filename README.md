@@ -1,10 +1,10 @@
 # SRA to SoH Save Converter
 
 [![GitHub Pages](https://img.shields.io/badge/Live_Demo-GitHub_Pages-blue?logo=github)](https://ctgl1987.github.io/n64-to-soh/)
-[![Version](https://img.shields.io/badge/Version-2026.08.10-informational)](https://ctgl1987.github.io/n64-to-soh/)
+[![Version](https://img.shields.io/badge/Version-2026.09.09-informational)](https://ctgl1987.github.io/n64-to-soh/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Made for SoH](https://img.shields.io/badge/Ship_of_Harkinian-Ackbar_Delta_9.2.3-gold)](https://www.shipofharkinian.com/)
-[![Save Format](https://img.shields.io/badge/Save_Format-v4-orange)]()
+[![Save Format](https://img.shields.io/badge/Save_Format-v4_%7C_v3-orange)]()
 [![No Server](https://img.shields.io/badge/100%25-Client_Side-purple)]()
 
 Web-based converter that imports N64 emulator save files (`.sra`, `.srm`) and Ship of Harkinian `.sav` files, displaying them with the in-game pause menu layout and allowing full inventory editing before export.
