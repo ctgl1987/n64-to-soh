@@ -11,12 +11,13 @@ Web-based converter that imports N64 emulator save files (`.sra`, `.srm`) and Sh
 
 ## Features
 
-- **Visual preview** of all 3 save slots using the original pause menu layout (Items, Equipment, Quest, Save)
+- **Visual preview** of all 3 save slots using the original pause menu layout (Items, Equip, Quest, Stats, Save)
 - **Full save editing** via overlay edit panels:
   - **Items**: checkboxes, dropdowns for multi-option slots (bottles, adult/child trade), ammo inputs
-  - **Equipment**: checkboxes for gear bits, radio selectors for upgrade tiers (quiver, bomb bag, strength, scale, wallet, bullet bag, sticks, nuts)
+  - **Equip**: checkboxes for gear bits, radio selectors for upgrade tiers (quiver, bomb bag, strength, scale, bullet bag)
   - **Quest**: checkboxes for medallions, songs, spiritual stones, Stone of Agony, Gerudo Card; number inputs for Gold Skulltulas and heart pieces
-- **Basic field editing** of player name, rupees, and health
+  - **Stats**: radio selectors for wallet, sticks and nuts
+- **Basic field editing** of player name, rupees, and health — for N64 conversions and imported `.sav` files alike
 - **Visual diff**: blue "save" badges mark original items, green "new" badges and green dots highlight additions
 - **Reset edits** button to restore original save values
 - **Tooltips** on all items for quick identification
@@ -86,13 +87,33 @@ The selector applies to N64 `.sra`/`.srm` conversions and to re-exported `.sav` 
 1. Open `index.html` in any modern browser (or use the [live demo](https://ctgl1987.github.io/n64-to-soh/))
 2. Drag and drop your `.sra` / `.srm` / `.sav` file (or click to browse)
 3. Click on a save slot to expand it
-4. Browse Items, Equipment, Quest screens to verify your save data
+4. Browse the Items, Equip, Quest and Stats screens to verify your save data
 5. Click the ✎ button on any screen to open the edit panel and add/remove items
 6. Edit player name, rupees, or health in the Save tab
 7. Select slots to export and click **Export .sav**
 8. Place the exported `.sav` in your SoH save directory
 
 No server required — everything runs client-side in the browser.
+
+## Screens
+
+The pause menu is reproduced as the game draws it, which sets what goes where.
+
+| Screen | Shows | Editable |
+|--------|-------|----------|
+| Items | The 24 inventory slots with ammo counts | yes |
+| Equip | Swords, shields, tunics, boots, and the four upgrade slots | yes |
+| Quest | Medallions, songs, spiritual stones, Skulltulas, heart pieces | yes |
+| Stats | Wallet, sticks, nuts, magic, Double Defense, hearts, deaths | wallet, sticks, nuts |
+| Save | Name, rupees, hearts, export format and slot selection | yes |
+
+**Equip** has exactly four upgrade slots because the game does: the quiver for adult
+Link or the bullet bag for child, then the bomb bag, strength and scale. A slot stays
+empty when that upgrade isn't owned rather than pulling the next one up.
+
+**Stats** exists because the wallet, stick and nut capacities have no slot anywhere in
+the real pause menu, and neither do magic or Double Defense. Magic, Double Defense,
+hearts and deaths are read-only — they're derived from other fields.
 
 ## Versioning
 
