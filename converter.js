@@ -9,6 +9,7 @@ const CHANGELOG = [
   {
     date: '2026-09-11',
     changes: [
+      'Imported <code>.sav</code> files can now edit name, rupees and hearts before re-exporting, same as emulator saves.',
       'New <strong>Stats</strong> screen for what the pause menu has no slot for: wallet, sticks, nuts, magic, Double Defense, hearts and deaths — with its own editor for the upgrades.',
       'The Equipment screen now mirrors the game: four fixed slots, showing the quiver for adult Link and the bullet bag for child. Before, it listed whichever four upgrades happened to be owned, so some were silently dropped and others appeared in the wrong row.',
       "Added the missing Adult's and Giant's Wallet icons.",
@@ -428,10 +429,11 @@ function sohDataToDisplay(data) {
   };
 }
 
-function buildSohSaveScreen(result, filename) {
+function buildSohSaveScreen(result, filename, p) {
   window._upgradedSave = result.json;
   const versionSelect = versionSelectHtml('exportVersion0');
   let h = '<div class="save-screen-inner">';
+  if (p && !result.error) h += saveEditFieldsHtml(0, p);
   if (result.error) {
     h += `<div class="upgrade-error">${result.error}</div>`;
   } else if (result.alreadyCurrent) {
@@ -496,7 +498,7 @@ function renderSohSlot(data, filename, result) {
     equip: buildEquipScreen(p, 0),
     quest: buildQuestScreen(p, 0),
     stats: buildStatsScreen(p, 0),
-    save: buildSohSaveScreen(result, filename),
+    save: buildSohSaveScreen(result, filename, p),
   };
 
   for (const tab of PAUSE_TABS) {
@@ -892,7 +894,7 @@ function buildStatsScreen(p, slotIdx) {
   // UI surfaces them, so they belong here too. Read-only: both are derived state.
   const magicCap = p.magicLevel === 2 ? 96 : 48;
   h += `<div class="stats-row${p.isMagicAcquired ? '' : ' stats-off'}" title="Magic Meter">`;
-  h += '<img class="stats-icon" src="images/upgrades/upg_scale1.webp" alt="Magic" style="filter:hue-rotate(200deg)">';
+  h += '<img class="stats-icon" src="images/upgrades/magic_jar.webp" alt="Magic">';
   h += '<span class="stats-name">Magic</span>';
   h += `<span class="stats-value">${p.isMagicAcquired ? `${p.magic} / ${magicCap}` : '—'}</span>`;
   h += '</div>';
@@ -1158,18 +1160,23 @@ function encodeName(str) {
   return bytes;
 }
 
-function buildSaveScreen(i, p) {
+// Name / rupees / hearts editor. Shared so an imported .sav gets the same fields as
+// an emulator save — applyEdits() reads these ids for both paths.
+function saveEditFieldsHtml(i, p) {
   const maxHearts = Math.floor(p.healthCapacity / 16);
-  let h = '<div class="save-screen-inner">';
-
-  // Edit fields
-  h += '<div class="save-edit">';
+  let h = '<div class="save-edit">';
   h += '<div class="save-edit-title">Edit before export</div>';
   h += '<div class="save-edit-fields">';
   h += `<label>Name <input class="save-field" id="editName${i}" type="text" maxlength="8" value="${p.name}" onclick="event.stopPropagation()"></label>`;
   h += `<label>Rupees <input class="save-field" id="editRupees${i}" type="number" min="0" max="500" value="${p.rupees}" onclick="event.stopPropagation()"></label>`;
   h += `<label>Hearts <input class="save-field" id="editHearts${i}" type="number" min="3" max="20" value="${maxHearts}" onclick="event.stopPropagation()"></label>`;
   h += '</div></div>';
+  return h;
+}
+
+function buildSaveScreen(i, p) {
+  let h = '<div class="save-screen-inner">';
+  h += saveEditFieldsHtml(i, p);
 
   // Export checkboxes
   h += '<div class="save-export">';
@@ -1409,7 +1416,9 @@ function downloadSohSave(filename) {
   if (!json) return;
   const version = parseInt(document.getElementById('exportVersion0').value) || 4;
   const copy = JSON.parse(JSON.stringify(json));
-  applyToggleEdits(copy.sections.base.data, 0);
+  // applyEdits covers name/rupees/hearts and calls applyToggleEdits itself. It has to
+  // run before the version conversion, since encodeName writes v4 charset bytes.
+  applyEdits(0, copy, 0);
   downloadJson(convertToTargetVersion(copy, version), filename);
 }
 
@@ -1700,6 +1709,7 @@ function resetEdits(slotIdx) {
   rerenderScreen(slotIdx, 'items');
   rerenderScreen(slotIdx, 'equip');
   rerenderScreen(slotIdx, 'quest');
+  rerenderScreen(slotIdx, 'stats');
   updateSummary(slotIdx);
 }
 
